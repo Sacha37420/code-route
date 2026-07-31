@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { KeycloakService } from '../../core/keycloak.service';
 import { ConfigurationMistral } from '../../core/models';
 
 @Component({
@@ -12,10 +13,12 @@ import { ConfigurationMistral } from '../../core/models';
 })
 export class ParametrageComponent implements OnInit {
   private api = inject(ApiService);
+  private kc = inject(KeycloakService);
 
   config = signal<ConfigurationMistral | undefined>(undefined);
   loading = signal(true);
   enregistre = signal(false);
+  tokenCopie = signal(false);
 
   actif = false;
   modele = 'mistral-large-latest';
@@ -43,6 +46,15 @@ export class ParametrageComponent implements OnInit {
       this.nouvelleCle = '';
       this.enregistre.set(true);
       setTimeout(() => this.enregistre.set(false), 2000);
+    });
+  }
+
+  copierToken(): void {
+    const token = this.kc.getToken();
+    if (!token) return;
+    navigator.clipboard.writeText(token).then(() => {
+      this.tokenCopie.set(true);
+      setTimeout(() => this.tokenCopie.set(false), 2000);
     });
   }
 }

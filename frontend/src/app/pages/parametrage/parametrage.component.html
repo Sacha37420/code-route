@@ -32,5 +32,17 @@
 
       <button class="btn-primary" type="submit">{{ enregistre() ? 'Enregistré ✓' : 'Enregistrer' }}</button>
     </form>
+
+    <section class="card">
+      <h3>Outils d'administration</h3>
+      <p class="hint">
+        Token Bearer courant — utile pour lancer une commande de gestion ponctuelle
+        (ex. <code>seed_illustrations_wikimedia --token …</code>) depuis un
+        <code>docker exec</code> sur le backend.
+      </p>
+      <button class="btn-secondary" type="button" (click)="copierToken()">
+        {{ tokenCopie() ? 'Copié ✓' : 'Copier mon token' }}
+      </button>
+    </section>
   }
 </main>

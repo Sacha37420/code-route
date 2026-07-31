@@ -1,6 +1,4 @@
 import { Routes } from '@angular/router';
-import { HomeComponent }              from './pages/home/home.component';
-import { ProfileComponent }           from './pages/profile/profile.component';
 import { ThemeListComponent }         from './pages/themes/theme-list.component';
 import { ThemeDetailComponent }       from './pages/themes/theme-detail.component';
 import { FicheDetailComponent }       from './pages/fiches/fiche-detail.component';
@@ -15,7 +13,7 @@ import { BilanComponent }             from './pages/bilan/bilan.component';
 import { GenerationIaComponent }      from './pages/generation/generation-ia.component';
 
 export const routes: Routes = [
-  { path: '',              component: HomeComponent },
+  { path: '',              redirectTo: 'themes', pathMatch: 'full' },
   { path: 'themes',        component: ThemeListComponent },
   { path: 'themes/:id',    component: ThemeDetailComponent },
   { path: 'fiches/:id',    component: FicheDetailComponent },
@@ -28,6 +26,5 @@ export const routes: Routes = [
   { path: 'questions',     component: QuestionsAdminComponent },
   { path: 'generation-ia', component: GenerationIaComponent },
   { path: 'parametrage',   component: ParametrageComponent },
-  { path: 'profile',       component: ProfileComponent },
-  { path: '**',            redirectTo: '' },
+  { path: '**',            redirectTo: 'themes' },
 ];

@@ -35,13 +35,11 @@ export class AppComponent implements OnInit {
   protected closeMobileFn = (): void => this.closeMobile();
 
   private readonly baseNavItems: NavItem[] = [
-    { path: '/',           label: 'Accueil',           abbr: 'Ac', exact: true },
     { path: '/themes',     label: 'Fiches de révision', abbr: 'Fi' },
     { path: '/quiz',       label: 'Quiz',              abbr: 'Qz' },
     { path: '/historique', label: 'Mon historique',    abbr: 'Hi' },
     { path: '/bilan',      label: 'Mon bilan',         abbr: 'Bi' },
     { path: '/ressources', label: 'Autres ressources', abbr: 'Re' },
-    { path: '/profile',    label: 'Profil',            abbr: 'Pr' },
   ];
 
   private readonly adminNavItems: NavItem[] = [
