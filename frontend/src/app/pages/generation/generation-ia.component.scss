@@ -1,0 +1,75 @@
+.lancer-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-end;
+  margin-bottom: var(--space-6);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+}
+
+.resultat-generation { margin-bottom: var(--space-6); }
+
+.resultat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.erreur { color: var(--danger); }
+
+.question-list, .historique-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.question-item-head { margin-bottom: var(--space-2); }
+.statut-proposee { background: var(--warning-tint); color: var(--warning); }
+.statut-validee { background: var(--success-tint); color: var(--success); }
+.statut-rejetee { background: var(--danger-tint); color: var(--danger); }
+.statut-terminee { background: var(--success-tint); color: var(--success); }
+.statut-erreur { background: var(--danger-tint); color: var(--danger); }
+.statut-en_cours { background: var(--accent-tint); color: var(--accent-deep); }
+
+.enonce { font-weight: 600; margin-bottom: var(--space-2); }
+
+.reponses-apercu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+
+  li.correcte { color: var(--success); font-weight: 600; }
+}
+
+.explication { color: var(--text-mute); font-size: var(--text-sm); margin-bottom: var(--space-2); }
+
+.question-item-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.generation-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-family: var(--font-ui);
+
+  &:hover { border-color: var(--accent); }
+}

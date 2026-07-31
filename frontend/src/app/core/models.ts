@@ -178,3 +178,24 @@ export interface AnalyseIA {
   };
   resume_texte: string;
 }
+
+// ── Génération IA de questions (Lot 4) ──────────────────────────────────────
+
+export type StatutGeneration = 'en_cours' | 'terminee' | 'erreur';
+
+export interface GenerationIA {
+  id: number;
+  theme: number;
+  theme_nom: string;
+  difficulte: Difficulte;
+  date: string;
+  modele: string;
+  nombre_demande: number;
+  nombre_genere: number;
+  statut: StatutGeneration;
+  erreur_message: string;
+}
+
+export interface GenerationIADetail extends GenerationIA {
+  questions: QuestionAdmin[];
+}

@@ -7,6 +7,7 @@ from .views import (
     QuizDemarrerView, QuizRepondreView, QuizTerminerView,
     QuizHistoriqueView, QuizSessionDetailView,
     ConfigurationMistralView, MonBilanView,
+    GenerationIALancerView, GenerationIAListView, GenerationIAStatutView,
 )
 
 router = DefaultRouter()
@@ -27,6 +28,10 @@ urlpatterns = [
 
     path('configuration-mistral/', ConfigurationMistralView.as_view()),
     path('mon-bilan/', MonBilanView.as_view()),
+
+    path('generation-ia/', GenerationIAListView.as_view()),
+    path('generation-ia/lancer/', GenerationIALancerView.as_view()),
+    path('generation-ia/<int:generation_id>/statut/', GenerationIAStatutView.as_view()),
 
     path('', include(router.urls)),
 ]

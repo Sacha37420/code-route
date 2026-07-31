@@ -12,6 +12,7 @@ import { HistoriqueDetailComponent }  from './pages/historique/historique-detail
 import { QuestionsAdminComponent }    from './pages/questions/questions-admin.component';
 import { ParametrageComponent }       from './pages/parametrage/parametrage.component';
 import { BilanComponent }             from './pages/bilan/bilan.component';
+import { GenerationIaComponent }      from './pages/generation/generation-ia.component';
 
 export const routes: Routes = [
   { path: '',              component: HomeComponent },
@@ -25,6 +26,7 @@ export const routes: Routes = [
   { path: 'historique/:id', component: HistoriqueDetailComponent },
   { path: 'bilan',         component: BilanComponent },
   { path: 'questions',     component: QuestionsAdminComponent },
+  { path: 'generation-ia', component: GenerationIaComponent },
   { path: 'parametrage',   component: ParametrageComponent },
   { path: 'profile',       component: ProfileComponent },
   { path: '**',            redirectTo: '' },

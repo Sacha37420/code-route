@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import {
   Me, Theme, FicheCours, IllustrationDisponible, SiteExterne,
   QuestionAdmin, QuizSession, QuizSessionDetail, DemarrerQuizResponse, RepondreQuizResponse,
-  ConfigurationMistral, AnalyseIA,
+  ConfigurationMistral, AnalyseIA, GenerationIA, GenerationIADetail, Difficulte,
 } from './models';
 
 interface EnvWindow {
@@ -137,5 +137,18 @@ export class ApiService {
   }
   getMonBilan(): Observable<AnalyseIA> {
     return this.http.get<AnalyseIA>(`${this.base}/api/mon-bilan/`);
+  }
+
+  // ── Génération IA de questions (Lot 4) ─────────────────────────────────
+  getGenerationsIA(): Observable<GenerationIA[]> {
+    return this.http.get<GenerationIA[]>(`${this.base}/api/generation-ia/`);
+  }
+  lancerGenerationIA(themeId: number, difficulte: Difficulte, nombreDemande: number): Observable<GenerationIA> {
+    return this.http.post<GenerationIA>(`${this.base}/api/generation-ia/lancer/`, {
+      theme_id: themeId, difficulte, nombre_demande: nombreDemande,
+    });
+  }
+  getStatutGenerationIA(id: number): Observable<GenerationIADetail> {
+    return this.http.get<GenerationIADetail>(`${this.base}/api/generation-ia/${id}/statut/`);
   }
 }

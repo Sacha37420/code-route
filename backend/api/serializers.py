@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from .models import (
     Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse,
-    ConfigurationMistral, AnalyseIA,
+    ConfigurationMistral, AnalyseIA, GenerationIA,
 )
 
 
@@ -190,3 +190,27 @@ class AnalyseIASerializer(serializers.ModelSerializer):
     class Meta:
         model = AnalyseIA
         fields = ['id', 'date', 'contenu', 'resume_texte']
+
+
+# ── Génération IA de questions (Lot 4) ──────────────────────────────────────
+
+class GenerationIASerializer(serializers.ModelSerializer):
+    theme_nom = serializers.CharField(source='theme.nom', read_only=True)
+
+    class Meta:
+        model = GenerationIA
+        fields = [
+            'id', 'theme', 'theme_nom', 'difficulte', 'date', 'modele',
+            'nombre_demande', 'nombre_genere', 'statut', 'erreur_message',
+        ]
+        read_only_fields = ['date', 'modele', 'nombre_genere', 'statut', 'erreur_message']
+
+
+class GenerationIADetailSerializer(GenerationIASerializer):
+    """Ajoute les questions produites par cette génération — pour la vue de
+    résultat (polling), sans avoir à refaire un GET /api/questions/?generation=."""
+
+    questions = QuestionAdminSerializer(many=True, read_only=True)
+
+    class Meta(GenerationIASerializer.Meta):
+        fields = GenerationIASerializer.Meta.fields + ['questions']

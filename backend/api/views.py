@@ -15,10 +15,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import storage_client
-from .tasks import analyser_resultats
+from .tasks import analyser_resultats, generer_questions
 from .models import (
     Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse,
-    ConfigurationMistral, AnalyseIA,
+    ConfigurationMistral, AnalyseIA, GenerationIA,
 )
 from .permissions import IsAdmin, IsAdminOrReadOnly
 from .serializers import (
@@ -26,6 +26,7 @@ from .serializers import (
     QuestionAdminSerializer, QuestionQuizSerializer, QuestionReviewSerializer,
     QuizSessionSerializer, QuizSessionDetailSerializer,
     ConfigurationMistralSerializer, AnalyseIASerializer,
+    GenerationIASerializer, GenerationIADetailSerializer,
 )
 
 # Chemin storage du manifeste écrit par seed_illustrations_wikimedia (voir ce
@@ -363,3 +364,51 @@ class MonBilanView(APIView):
         if analyse is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(AnalyseIASerializer(analyse).data)
+
+
+class GenerationIALancerView(APIView):
+    """POST /api/generation-ia/lancer/ — {theme_id, difficulte, nombre_demande}.
+    Toujours manuel (page admin), jamais déclenché automatiquement."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        theme = get_object_or_404(Theme, pk=request.data.get('theme_id'))
+        difficulte = request.data.get('difficulte')
+        if difficulte not in ('facile', 'moyen', 'difficile'):
+            return Response({'detail': 'difficulte invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            nombre_demande = int(request.data.get('nombre_demande', 5))
+        except (TypeError, ValueError):
+            return Response({'detail': 'nombre_demande invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+        nombre_demande = max(1, min(nombre_demande, 20))
+
+        generation = GenerationIA.objects.create(
+            theme=theme, difficulte=difficulte, nombre_demande=nombre_demande, statut='en_cours',
+        )
+        generer_questions.delay(generation.id)
+        return Response(GenerationIASerializer(generation).data, status=status.HTTP_201_CREATED)
+
+
+class GenerationIAListView(APIView):
+    """GET /api/generation-ia/ — historique des générations, plus récentes d'abord."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        generations = GenerationIA.objects.select_related('theme').order_by('-date')[:50]
+        return Response(GenerationIASerializer(generations, many=True).data)
+
+
+class GenerationIAStatutView(APIView):
+    """GET /api/generation-ia/<id>/statut/ — polling (même pattern que la page
+    Debug de lab-admin) : statut + questions produites une fois terminée."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request, generation_id):
+        generation = get_object_or_404(
+            GenerationIA.objects.select_related('theme').prefetch_related('questions__reponses'),
+            pk=generation_id,
+        )
+        return Response(GenerationIADetailSerializer(generation).data)

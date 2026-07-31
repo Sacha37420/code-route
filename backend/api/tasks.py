@@ -87,3 +87,95 @@ def analyser_resultats(utilisateur_email: str) -> None:
         contenu=contenu,
         resume_texte=resume_texte,
     )
+
+
+# Taille de l'échantillon few-shot fourni à Mistral — quelques exemples
+# suffisent (cf. to_do_code_route.md Lot 4), pas besoin de tout le thème.
+TAILLE_ECHANTILLON_GENERATION = 8
+
+
+@shared_task
+def generer_questions(generation_id: int) -> None:
+    """Déclenchée manuellement (page admin « Génération IA »). Fournit à Mistral
+    un échantillon de questions déjà validées du thème/difficulté demandés et
+    insère les questions produites avec origine='ia', statut='proposee' —
+    jamais validées automatiquement (cf. CLAUDE.md, aucune question IA n'est
+    jamais servie dans un quiz réel sans validation humaine explicite)."""
+    from . import mistral_client, prompts_mistral
+    from .models import ConfigurationMistral, GenerationIA, Question, Reponse
+
+    generation = GenerationIA.objects.select_related('theme').get(pk=generation_id)
+
+    echantillon_qs = (
+        Question.objects
+        .filter(theme=generation.theme, difficulte=generation.difficulte, statut='validee')
+        .prefetch_related('reponses')
+        .order_by('?')[:TAILLE_ECHANTILLON_GENERATION]
+    )
+    echantillon = [
+        {
+            'enonce': q.enonce,
+            'type': q.type,
+            'explication_generale': q.explication_generale,
+            'reponses': [
+                {'texte': r.texte, 'correcte': r.correcte, 'explication': r.explication}
+                for r in q.reponses.all()
+            ],
+        }
+        for q in echantillon_qs
+    ]
+
+    if not echantillon:
+        generation.statut = 'erreur'
+        generation.erreur_message = (
+            "Aucune question déjà validée pour ce thème et cette difficulté — "
+            "un premier amorçage manuel est requis avant de pouvoir générer (cf. Lot 4)."
+        )
+        generation.save(update_fields=['statut', 'erreur_message'])
+        return
+
+    system, message, schema = prompts_mistral.construire_prompt_generation(
+        generation.theme.nom, generation.difficulte, generation.nombre_demande, echantillon,
+    )
+    generation.prompt_utilise = message
+
+    try:
+        resultat = mistral_client.completer_json(system, message, schema)
+    except (mistral_client.MistralNonConfigure, mistral_client.MistralError) as exc:
+        generation.statut = 'erreur'
+        generation.erreur_message = str(exc)
+        generation.save(update_fields=['statut', 'erreur_message', 'prompt_utilise'])
+        return
+
+    nombre_genere = 0
+    for q_data in resultat.get('questions', []):
+        reponses_data = q_data.get('reponses', [])
+        # Une question sans réponse correcte identifiée est inexploitable dans
+        # un quiz — on l'écarte plutôt que de la proposer cassée à la validation.
+        if not any(r.get('correcte') for r in reponses_data):
+            continue
+        question = Question.objects.create(
+            theme=generation.theme,
+            enonce=q_data.get('enonce', ''),
+            type=q_data.get('type', 'qcm_unique'),
+            difficulte=generation.difficulte,
+            explication_generale=q_data.get('explication_generale', ''),
+            origine='ia',
+            statut='proposee',
+            generation=generation,
+        )
+        for r_data in reponses_data:
+            Reponse.objects.create(
+                question=question,
+                texte=r_data.get('texte', ''),
+                correcte=bool(r_data.get('correcte')),
+                explication=r_data.get('explication') or '',
+            )
+        nombre_genere += 1
+
+    generation.nombre_genere = nombre_genere
+    generation.statut = 'terminee' if nombre_genere > 0 else 'erreur'
+    if nombre_genere == 0:
+        generation.erreur_message = "Mistral n'a produit aucune question exploitable pour cette demande."
+    generation.modele = ConfigurationMistral.get().modele
+    generation.save(update_fields=['nombre_genere', 'statut', 'erreur_message', 'prompt_utilise', 'modele'])

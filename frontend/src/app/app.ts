@@ -45,8 +45,9 @@ export class AppComponent implements OnInit {
   ];
 
   private readonly adminNavItems: NavItem[] = [
-    { path: '/questions',    label: 'Banque de questions', abbr: 'Qu' },
-    { path: '/parametrage',  label: 'Paramétrage',         abbr: 'Pa' },
+    { path: '/questions',      label: 'Banque de questions', abbr: 'Qu' },
+    { path: '/generation-ia',  label: 'Génération IA',       abbr: 'Ge' },
+    { path: '/parametrage',    label: 'Paramétrage',         abbr: 'Pa' },
   ];
 
   navItems = computed<NavItem[]>(() => this.isAdmin()
