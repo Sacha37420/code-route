@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   Me, Theme, FicheCours, IllustrationDisponible, SiteExterne,
+  QuestionAdmin, QuizSession, QuizSessionDetail, DemarrerQuizResponse, RepondreQuizResponse,
 } from './models';
 
 interface EnvWindow {
@@ -73,5 +74,56 @@ export class ApiService {
   }
   deleteSiteExterne(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/sites-externes/${id}/`);
+  }
+
+  // ── Banque de questions (admin) ────────────────────────────────────────
+  getQuestions(params: { theme?: number; statut?: string } = {}): Observable<QuestionAdmin[]> {
+    const qs = new URLSearchParams();
+    if (params.theme) qs.set('theme', String(params.theme));
+    if (params.statut) qs.set('statut', params.statut);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return this.http.get<QuestionAdmin[]>(`${this.base}/api/questions/${suffix}`);
+  }
+  getQuestion(id: number): Observable<QuestionAdmin> {
+    return this.http.get<QuestionAdmin>(`${this.base}/api/questions/${id}/`);
+  }
+  createQuestion(data: unknown): Observable<QuestionAdmin> {
+    return this.http.post<QuestionAdmin>(`${this.base}/api/questions/`, data);
+  }
+  updateQuestion(id: number, data: unknown): Observable<QuestionAdmin> {
+    return this.http.patch<QuestionAdmin>(`${this.base}/api/questions/${id}/`, data);
+  }
+  deleteQuestion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/questions/${id}/`);
+  }
+  validerQuestion(id: number): Observable<QuestionAdmin> {
+    return this.http.post<QuestionAdmin>(`${this.base}/api/questions/${id}/valider/`, {});
+  }
+  rejeterQuestion(id: number): Observable<QuestionAdmin> {
+    return this.http.post<QuestionAdmin>(`${this.base}/api/questions/${id}/rejeter/`, {});
+  }
+  questionIllustrationUrl(id: number): string {
+    return `${this.base}/api/questions/${id}/illustration/`;
+  }
+
+  // ── Moteur de quiz ─────────────────────────────────────────────────────
+  demarrerQuiz(themes: number[], difficulte: string, nombreQuestions: number): Observable<DemarrerQuizResponse> {
+    return this.http.post<DemarrerQuizResponse>(`${this.base}/api/quiz/demarrer/`, {
+      themes, difficulte, nombre_questions: nombreQuestions,
+    });
+  }
+  repondreQuiz(sessionId: number, questionId: number, reponsesChoisies: number[], tempsMs: number): Observable<RepondreQuizResponse> {
+    return this.http.post<RepondreQuizResponse>(`${this.base}/api/quiz/${sessionId}/repondre/`, {
+      question: questionId, reponses_choisies: reponsesChoisies, temps_ms: tempsMs,
+    });
+  }
+  terminerQuiz(sessionId: number): Observable<QuizSession> {
+    return this.http.post<QuizSession>(`${this.base}/api/quiz/${sessionId}/terminer/`, {});
+  }
+  getHistorique(): Observable<QuizSession[]> {
+    return this.http.get<QuizSession[]>(`${this.base}/api/quiz/historique/`);
+  }
+  getSessionDetail(sessionId: number): Observable<QuizSessionDetail> {
+    return this.http.get<QuizSessionDetail>(`${this.base}/api/quiz/${sessionId}/`);
   }
 }

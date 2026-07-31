@@ -1,0 +1,26 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Historique de mes quiz</h1>
+  </header>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else if (sessions().length === 0) {
+    <p class="hint">Aucun quiz réalisé pour l'instant.</p>
+  } @else {
+    <ul class="session-list">
+      @for (s of sessions(); track s.id) {
+        <li>
+          <a [routerLink]="['/historique', s.id]" class="card session-link">
+            <span class="date">{{ s.date_debut | date:'dd/MM/yyyy HH:mm' }}</span>
+            @if (s.date_fin) {
+              <span class="score">{{ s.score }} / {{ s.nombre_questions }} ({{ pourcentage(s) }}%)</span>
+            } @else {
+              <span class="badge">En cours</span>
+            }
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</main>

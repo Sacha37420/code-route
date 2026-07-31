@@ -1,0 +1,145 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Banque de questions</h1>
+    <p class="subtitle">Réservé aux administrateurs. Un usager ne voit jamais cette liste — seulement les questions tirées dans un quiz.</p>
+  </header>
+
+  @if (!editing()) {
+    <div class="filters">
+      <select class="input" [(ngModel)]="filtreTheme" (ngModelChange)="load()">
+        <option value="">Tous les thèmes</option>
+        @for (t of themes(); track t.id) { <option [value]="t.id">{{ t.nom }}</option> }
+      </select>
+      <select class="input" [(ngModel)]="filtreStatut" (ngModelChange)="load()">
+        <option value="">Tous les statuts</option>
+        <option value="validee">Validée</option>
+        <option value="proposee">Proposée (IA)</option>
+        <option value="rejetee">Rejetée</option>
+      </select>
+      <button class="btn-primary" type="button" (click)="startCreate()">+ Nouvelle question</button>
+    </div>
+
+    @if (loading()) {
+      <p class="hint">Chargement…</p>
+    } @else {
+      <ul class="question-list">
+        @for (q of questions(); track q.id) {
+          <li class="card question-item">
+            <div class="question-item-head">
+              <span class="badge">{{ q.theme_nom }}</span>
+              <span class="badge">{{ q.difficulte }}</span>
+              <span class="badge" [class]="'statut-' + q.statut">{{ statutLabel(q.statut) }}</span>
+              @if (q.origine === 'ia') { <span class="badge origine-ia">Générée IA</span> }
+            </div>
+            <p class="enonce">{{ q.enonce }}</p>
+            <div class="question-item-actions">
+              <button class="btn-secondary" type="button" (click)="startEdit(q)">Modifier</button>
+              @if (q.statut === 'proposee') {
+                <button class="btn-primary" type="button" (click)="valider(q)">Valider</button>
+                <button class="btn-danger" type="button" (click)="rejeter(q)">Rejeter</button>
+              }
+              <button class="btn-danger" type="button" (click)="supprimer(q)">Supprimer</button>
+            </div>
+          </li>
+        }
+        @empty {
+          <p class="hint">Aucune question pour ces filtres.</p>
+        }
+      </ul>
+    }
+  } @else {
+    <form class="card edit-form" (ngSubmit)="submit()">
+      <label>Thème
+        <select class="input" [(ngModel)]="form.theme" name="theme" required>
+          <option [ngValue]="null" disabled>Choisir un thème</option>
+          @for (t of themes(); track t.id) { <option [ngValue]="t.id">{{ t.nom }}</option> }
+        </select>
+      </label>
+
+      <label>Énoncé
+        <textarea class="textarea" [(ngModel)]="form.enonce" name="enonce" rows="3" required></textarea>
+      </label>
+
+      <div class="form-row">
+        <label>Type
+          <select class="input" [(ngModel)]="form.type" name="type" (ngModelChange)="onTypeChange()">
+            <option value="qcm_unique">QCM — réponse unique</option>
+            <option value="qcm_multiple">QCM — réponses multiples</option>
+            <option value="vrai_faux">Vrai / Faux</option>
+          </select>
+        </label>
+        <label>Difficulté
+          <select class="input" [(ngModel)]="form.difficulte" name="difficulte">
+            <option value="facile">Facile</option>
+            <option value="moyen">Moyen</option>
+            <option value="difficile">Difficile</option>
+          </select>
+        </label>
+      </div>
+
+      <div>
+        <h3>Réponses</h3>
+        @for (r of form.reponses; track $index) {
+          <div class="reponse-row">
+            @if (form.type === 'qcm_unique' || form.type === 'vrai_faux') {
+              <input type="radio" name="correcte" [checked]="r.correcte" (change)="choisirCorrecteUnique($index)" />
+            } @else {
+              <input type="checkbox" [(ngModel)]="r.correcte" [name]="'correcte' + $index" />
+            }
+            <input class="input" type="text" placeholder="Texte de la réponse" [(ngModel)]="r.texte" [name]="'texte' + $index"
+                   [readonly]="form.type === 'vrai_faux'" required />
+            <input class="input" type="text" placeholder="Explication du piège (si fausse)" [(ngModel)]="r.explication" [name]="'explication' + $index" />
+            @if (form.type === 'qcm_multiple' && form.reponses.length > 2) {
+              <button class="btn-danger" type="button" (click)="supprimerReponse($index)">✕</button>
+            }
+          </div>
+        }
+        @if (form.type === 'qcm_multiple') {
+          <button class="btn-secondary" type="button" (click)="ajouterReponse()">+ Ajouter une réponse</button>
+        }
+      </div>
+
+      <label>Explication générale
+        <textarea class="textarea" [(ngModel)]="form.explication_generale" name="explication_generale" rows="2"></textarea>
+      </label>
+
+      <label>Attribution de l'illustration
+        <input class="input" type="text" [(ngModel)]="form.illustration_credit" name="illustration_credit" />
+      </label>
+
+      @if (form.illustration_path) {
+        <figure class="illustration-preview">
+          <app-protected-image [url]="form.id ? illustrationUrl(form.id) : ''" alt="Illustration actuelle" />
+        </figure>
+      }
+
+      <label>Nouvelle illustration (upload)
+        <input type="file" accept="image/*,.svg" (change)="onFichierChange($event)" />
+      </label>
+
+      <div>
+        <button class="btn-secondary" type="button" (click)="toggleBanque()">
+          {{ showBanque() ? 'Masquer la banque Wikimedia' : 'Choisir dans la banque Wikimedia' }}
+        </button>
+      </div>
+
+      @if (showBanque()) {
+        <div class="banque-grid">
+          @for (item of banque(); track item.relative_path) {
+            <button class="banque-item" type="button" (click)="choisirDansBanque(item)">
+              <span class="banque-nom">{{ item.nom }}</span>
+              <span class="banque-credit">{{ item.credit }}</span>
+            </button>
+          } @empty {
+            <p class="hint">Aucune image amorcée pour l'instant.</p>
+          }
+        </div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-primary" type="submit">Enregistrer</button>
+        <button class="btn-secondary" type="button" (click)="cancelEdit()">Annuler</button>
+      </div>
+    </form>
+  }
+</main>

@@ -3,17 +3,26 @@ import mimetypes
 from uuid import uuid4
 
 from django.conf import settings
+from django.db import transaction
 from django.http import FileResponse
-from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import storage_client
-from .models import Theme, FicheCours, SiteExterne
+from .tasks import analyser_resultats
+from .models import Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse
 from .permissions import IsAdmin, IsAdminOrReadOnly
-from .serializers import ThemeSerializer, FicheCoursSerializer, SiteExterneSerializer
+from .serializers import (
+    ThemeSerializer, FicheCoursSerializer, SiteExterneSerializer,
+    QuestionAdminSerializer, QuestionQuizSerializer, QuestionReviewSerializer,
+    QuizSessionSerializer, QuizSessionDetailSerializer,
+)
 
 # Chemin storage du manifeste écrit par seed_illustrations_wikimedia (voir ce
 # module pour le format : liste de {relative_path, nom, credit}).
@@ -112,6 +121,192 @@ class SiteExterneViewSet(viewsets.ModelViewSet):
     queryset = SiteExterne.objects.all()
     serializer_class = SiteExterneSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    """Gestion de la banque de questions — réservée aux admins (IsAdmin, pas
+    IsAdminOrReadOnly) : un usager ne parcourt jamais la banque brute avec les
+    bonnes réponses visibles, seulement via le moteur de quiz (QuizDemarrerView),
+    qui sert QuestionQuizSerializer sans les corrections."""
+
+    queryset = Question.objects.select_related('theme').prefetch_related('reponses').all()
+    serializer_class = QuestionAdminSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        theme_id = self.request.query_params.get('theme')
+        statut = self.request.query_params.get('statut')
+        if theme_id:
+            qs = qs.filter(theme_id=theme_id)
+        if statut:
+            qs = qs.filter(statut=statut)
+        return qs
+
+    def perform_create(self, serializer):
+        illustration_file = serializer.validated_data.pop('illustration_file', None)
+        if illustration_file:
+            serializer.save(illustration_path=_upload_illustration(self.request, 'questions', illustration_file))
+        else:
+            serializer.save()
+
+    def perform_update(self, serializer):
+        illustration_file = serializer.validated_data.pop('illustration_file', None)
+        if not illustration_file:
+            serializer.save()
+            return
+        old_path = serializer.instance.illustration_path
+        serializer.save(illustration_path=_upload_illustration(self.request, 'questions', illustration_file))
+        _delete_owned_illustration(self.request, old_path)
+
+    def perform_destroy(self, instance):
+        path = instance.illustration_path
+        instance.delete()
+        _delete_owned_illustration(self.request, path)
+
+    @action(detail=True, methods=['get'])
+    def illustration(self, request, pk=None):
+        question = self.get_object()
+        if not question.illustration_path:
+            return Response(status=404)
+        tmp = storage_client.download_to_tempfile(_auth_header(request), question.illustration_path)
+        content_type = mimetypes.guess_type(question.illustration_path)[0] or 'application/octet-stream'
+        return FileResponse(tmp, content_type=content_type)
+
+    @action(detail=True, methods=['post'])
+    def valider(self, request, pk=None):
+        """Fait passer une question `proposee` (générée par IA) à `validee` —
+        jamais l'inverse d'une action de saisie manuelle (cf. Lot 4)."""
+        question = self.get_object()
+        question.statut = 'validee'
+        question.save(update_fields=['statut'])
+        return Response(QuestionAdminSerializer(question).data)
+
+    @action(detail=True, methods=['post'])
+    def rejeter(self, request, pk=None):
+        """Une question rejetée reste en base (traçabilité) mais n'est plus
+        jamais tirée dans un quiz — cf. QuizDemarrerView (statut='validee' uniquement)."""
+        question = self.get_object()
+        question.statut = 'rejetee'
+        question.save(update_fields=['statut'])
+        return Response(QuestionAdminSerializer(question).data)
+
+
+def _questions_disponibles(themes_ids, difficulte):
+    qs = Question.objects.filter(statut='validee').prefetch_related('reponses')
+    if themes_ids:
+        qs = qs.filter(theme_id__in=themes_ids)
+    if difficulte:
+        qs = qs.filter(difficulte=difficulte)
+    return qs
+
+
+class QuizDemarrerView(APIView):
+    """POST /api/quiz/demarrer/ — {themes: [id...], difficulte, nombre_questions}."""
+
+    def post(self, request):
+        themes_ids = [int(t) for t in request.data.get('themes', []) if str(t).isdigit()]
+        difficulte = request.data.get('difficulte') or ''
+        try:
+            nombre_questions = int(request.data.get('nombre_questions', 10))
+        except (TypeError, ValueError):
+            return Response({'detail': 'nombre_questions invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+        nombre_questions = max(1, min(nombre_questions, 50))
+
+        disponibles = list(_questions_disponibles(themes_ids, difficulte).order_by('?')[:nombre_questions])
+        if not disponibles:
+            return Response(
+                {'detail': "Aucune question validée ne correspond à ces critères."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            session = QuizSession.objects.create(
+                utilisateur_email=request.user.email,
+                themes_filtres=','.join(str(t) for t in themes_ids),
+                difficulte_filtree=difficulte,
+                nombre_questions=len(disponibles),
+            )
+            QuizReponse.objects.bulk_create([
+                QuizReponse(session=session, question=q, reponses_choisies=[], correcte=False)
+                for q in disponibles
+            ])
+
+        return Response({
+            'session': QuizSessionSerializer(session).data,
+            'questions': QuestionQuizSerializer(disponibles, many=True).data,
+        }, status=status.HTTP_201_CREATED)
+
+
+def _get_owned_session(request, session_id) -> QuizSession:
+    session = get_object_or_404(QuizSession, pk=session_id)
+    if session.utilisateur_email.lower() != request.user.email.lower():
+        raise PermissionDenied("Cette session de quiz ne vous appartient pas.")
+    return session
+
+
+class QuizRepondreView(APIView):
+    """POST /api/quiz/<id>/repondre/ — {question: id, reponses_choisies: [id...], temps_ms}."""
+
+    def post(self, request, session_id):
+        session = _get_owned_session(request, session_id)
+        if session.date_fin is not None:
+            return Response({'detail': 'Cette session est déjà terminée.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        question_id = request.data.get('question')
+        quiz_reponse = get_object_or_404(QuizReponse, session=session, question_id=question_id)
+        reponses_choisies = request.data.get('reponses_choisies', [])
+        if not isinstance(reponses_choisies, list):
+            return Response({'detail': 'reponses_choisies doit être une liste.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        correct_ids = set(
+            Reponse.objects.filter(question_id=question_id, correcte=True).values_list('id', flat=True)
+        )
+        choisies_ids = {int(r) for r in reponses_choisies if str(r).isdigit()}
+        correcte = choisies_ids == correct_ids
+
+        quiz_reponse.reponses_choisies = sorted(choisies_ids)
+        quiz_reponse.correcte = correcte
+        quiz_reponse.temps_ms = request.data.get('temps_ms')
+        quiz_reponse.save()
+
+        question = Question.objects.prefetch_related('reponses').get(pk=question_id)
+        return Response({
+            'correcte': correcte,
+            'question': QuestionReviewSerializer(question).data,
+        })
+
+
+class QuizTerminerView(APIView):
+    """POST /api/quiz/<id>/terminer/ — calcule le score, clôt la session."""
+
+    def post(self, request, session_id):
+        session = _get_owned_session(request, session_id)
+        if session.date_fin is None:
+            session.date_fin = timezone.now()
+            session.score = session.reponses_donnees.filter(correcte=True).count()
+            session.save(update_fields=['date_fin', 'score'])
+            analyser_resultats.delay(session.utilisateur_email)
+
+        return Response(QuizSessionSerializer(session).data)
+
+
+class QuizHistoriqueView(APIView):
+    """GET /api/quiz/historique/ — sessions de l'utilisateur courant, plus récentes d'abord."""
+
+    def get(self, request):
+        sessions = QuizSession.objects.filter(
+            utilisateur_email__iexact=request.user.email,
+        ).order_by('-date_debut')
+        return Response(QuizSessionSerializer(sessions, many=True).data)
+
+
+class QuizSessionDetailView(APIView):
+    """GET /api/quiz/<id>/ — détail d'une session avec correction question par question."""
+
+    def get(self, request, session_id):
+        session = _get_owned_session(request, session_id)
+        return Response(QuizSessionDetailSerializer(session).data)
 
 
 class IllustrationsDisponiblesView(APIView):

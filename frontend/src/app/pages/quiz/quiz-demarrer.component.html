@@ -1,0 +1,45 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Nouveau quiz</h1>
+    <p class="subtitle">Choisissez les thèmes, la difficulté et le nombre de questions.</p>
+  </header>
+
+  <form class="card demarrer-form" (ngSubmit)="demarrer()">
+    <div>
+      <h3>Thèmes (aucun coché = tous)</h3>
+      <div class="theme-checkboxes">
+        @for (theme of themes(); track theme.id) {
+          <label class="checkbox-item">
+            <input
+              type="checkbox"
+              [checked]="themesChoisis.has(theme.id)"
+              (change)="toggleTheme(theme.id)"
+            />
+            {{ theme.nom }}
+          </label>
+        }
+      </div>
+    </div>
+
+    <label>Difficulté
+      <select class="input" [(ngModel)]="difficulte" name="difficulte">
+        <option value="">Toutes</option>
+        <option value="facile">Facile</option>
+        <option value="moyen">Moyen</option>
+        <option value="difficile">Difficile</option>
+      </select>
+    </label>
+
+    <label>Nombre de questions
+      <input class="input" type="number" min="1" max="50" [(ngModel)]="nombreQuestions" name="nombre" />
+    </label>
+
+    @if (erreur()) {
+      <p class="erreur">{{ erreur() }}</p>
+    }
+
+    <button class="btn-primary" type="submit" [disabled]="demarrage()">
+      {{ demarrage() ? 'Démarrage…' : 'Démarrer le quiz' }}
+    </button>
+  </form>
+</main>

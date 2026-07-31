@@ -1,0 +1,51 @@
+<main class="page">
+  <a routerLink="/historique" class="back-link">← Historique</a>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else if (session(); as s) {
+    <header class="page-header">
+      <h1>Quiz du {{ s.date_debut | date:'dd/MM/yyyy HH:mm' }}</h1>
+      @if (s.score !== null) {
+        <p class="subtitle">Score : {{ s.score }} / {{ s.nombre_questions }}</p>
+      }
+    </header>
+
+    <div class="questions-review">
+      @for (qr of s.reponses_donnees; track qr.id) {
+        <div class="card question-review" [class.ok]="qr.correcte" [class.ko]="!qr.correcte">
+          <div class="review-head">
+            <span class="badge">{{ qr.question.theme_nom }}</span>
+            <span class="verdict">{{ qr.correcte ? '✔ Correct' : '✘ Incorrect' }}</span>
+          </div>
+
+          @if (qr.question.illustration_path) {
+            <figure class="illustration">
+              <app-protected-image [url]="illustrationUrl(qr.question.id)" [alt]="qr.question.enonce" />
+            </figure>
+          }
+
+          <p class="enonce">{{ qr.question.enonce }}</p>
+
+          <ul class="reponses-review">
+            @for (r of qr.question.reponses; track r.id) {
+              <li
+                [class.correcte]="r.correcte"
+                [class.choisie]="qr.reponses_choisies.includes(r.id!)"
+              >
+                {{ r.texte }}
+                {{ r.correcte ? '✔' : '' }}
+                {{ !r.correcte && qr.reponses_choisies.includes(r.id!) ? ' (votre réponse)' : '' }}
+                @if (!r.correcte && r.explication) { <span class="explication">— {{ r.explication }}</span> }
+              </li>
+            }
+          </ul>
+
+          @if (qr.question.explication_generale) {
+            <p class="explication-generale">{{ qr.question.explication_generale }}</p>
+          }
+        </div>
+      }
+    </div>
+  }
+</main>

@@ -40,3 +40,96 @@ export interface SiteExterne {
   date_verification: string | null;
   ordre: number;
 }
+
+// ── Banque de questions / quiz ─────────────────────────────────────────────
+
+export type TypeQuestion = 'qcm_unique' | 'qcm_multiple' | 'vrai_faux';
+export type Difficulte = 'facile' | 'moyen' | 'difficile';
+export type OrigineQuestion = 'humaine' | 'ia';
+export type StatutQuestion = 'validee' | 'proposee' | 'rejetee';
+
+export interface ReponseAdmin {
+  id?: number;
+  texte: string;
+  correcte: boolean;
+  explication: string;
+}
+
+export interface QuestionAdmin {
+  id: number;
+  theme: number;
+  theme_nom: string;
+  enonce: string;
+  type: TypeQuestion;
+  difficulte: Difficulte;
+  illustration_path: string;
+  illustration_credit: string;
+  explication_generale: string;
+  origine: OrigineQuestion;
+  statut: StatutQuestion;
+  generation: number | null;
+  cree_le: string;
+  reponses: ReponseAdmin[];
+}
+
+export interface ReponseQuiz {
+  id: number;
+  texte: string;
+}
+
+export interface QuestionQuiz {
+  id: number;
+  theme: number;
+  theme_nom: string;
+  enonce: string;
+  type: TypeQuestion;
+  difficulte: Difficulte;
+  illustration_path: string;
+  illustration_credit: string;
+  reponses: ReponseQuiz[];
+}
+
+export interface QuestionReview {
+  id: number;
+  theme: number;
+  theme_nom: string;
+  enonce: string;
+  type: TypeQuestion;
+  difficulte: Difficulte;
+  illustration_path: string;
+  illustration_credit: string;
+  explication_generale: string;
+  reponses: ReponseAdmin[];
+}
+
+export interface QuizSession {
+  id: number;
+  date_debut: string;
+  date_fin: string | null;
+  themes_filtres: string;
+  difficulte_filtree: string;
+  nombre_questions: number;
+  score: number | null;
+}
+
+export interface QuizReponseDetail {
+  id: number;
+  question: QuestionReview;
+  reponses_choisies: number[];
+  correcte: boolean;
+  temps_ms: number | null;
+}
+
+export interface QuizSessionDetail extends QuizSession {
+  reponses_donnees: QuizReponseDetail[];
+}
+
+export interface DemarrerQuizResponse {
+  session: QuizSession;
+  questions: QuestionQuiz[];
+}
+
+export interface RepondreQuizResponse {
+  correcte: boolean;
+  question: QuestionReview;
+}

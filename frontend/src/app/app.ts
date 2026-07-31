@@ -1,8 +1,9 @@
-import { Component, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, computed, inject, signal, ViewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { KeycloakService } from './core/keycloak.service';
 import { ThemeService } from './core/theme.service';
+import { ApiService } from './core/api.service';
 
 interface NavItem {
   label: string;
@@ -20,26 +21,38 @@ const MOBILE_CLOSE_ANIM_MS = 220;
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   protected kc = inject(KeycloakService);
   protected theme = inject(ThemeService);
+  private api = inject(ApiService);
 
   collapsed = signal(false);
   mobileOpen = signal(false);
   mobileClosing = signal(false);
+  isAdmin = signal(false);
 
   protected noop = (): void => {};
   protected closeMobileFn = (): void => this.closeMobile();
 
-  readonly navItems: NavItem[] = [
+  private readonly baseNavItems: NavItem[] = [
     { path: '/',           label: 'Accueil',           abbr: 'Ac', exact: true },
     { path: '/themes',     label: 'Fiches de révision', abbr: 'Fi' },
+    { path: '/quiz',       label: 'Quiz',              abbr: 'Qz' },
+    { path: '/historique', label: 'Mon historique',    abbr: 'Hi' },
     { path: '/ressources', label: 'Autres ressources', abbr: 'Re' },
     { path: '/profile',    label: 'Profil',            abbr: 'Pr' },
   ];
 
+  navItems = computed<NavItem[]>(() => this.isAdmin()
+    ? [...this.baseNavItems, { path: '/questions', label: 'Banque de questions', abbr: 'Qu' }]
+    : this.baseNavItems);
+
   @ViewChild('closeBtn') private closeBtnRef?: ElementRef<HTMLButtonElement>;
   @ViewChild('burgerBtn') private burgerBtnRef?: ElementRef<HTMLButtonElement>;
+
+  ngOnInit(): void {
+    this.api.getMe().subscribe(me => this.isAdmin.set(me.is_admin));
+  }
 
   toggleCollapsed(): void {
     this.collapsed.update(v => !v);

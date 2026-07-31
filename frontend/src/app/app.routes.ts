@@ -1,17 +1,27 @@
 import { Routes } from '@angular/router';
-import { HomeComponent }        from './pages/home/home.component';
-import { ProfileComponent }     from './pages/profile/profile.component';
-import { ThemeListComponent }   from './pages/themes/theme-list.component';
-import { ThemeDetailComponent } from './pages/themes/theme-detail.component';
-import { FicheDetailComponent } from './pages/fiches/fiche-detail.component';
-import { RessourcesComponent }  from './pages/ressources/ressources.component';
+import { HomeComponent }              from './pages/home/home.component';
+import { ProfileComponent }           from './pages/profile/profile.component';
+import { ThemeListComponent }         from './pages/themes/theme-list.component';
+import { ThemeDetailComponent }       from './pages/themes/theme-detail.component';
+import { FicheDetailComponent }       from './pages/fiches/fiche-detail.component';
+import { RessourcesComponent }        from './pages/ressources/ressources.component';
+import { QuizDemarrerComponent }      from './pages/quiz/quiz-demarrer.component';
+import { QuizSessionComponent }       from './pages/quiz/quiz-session.component';
+import { HistoriqueListComponent }    from './pages/historique/historique-list.component';
+import { HistoriqueDetailComponent }  from './pages/historique/historique-detail.component';
+import { QuestionsAdminComponent }    from './pages/questions/questions-admin.component';
 
 export const routes: Routes = [
-  { path: '',            component: HomeComponent },
-  { path: 'themes',      component: ThemeListComponent },
-  { path: 'themes/:id',  component: ThemeDetailComponent },
-  { path: 'fiches/:id',  component: FicheDetailComponent },
-  { path: 'ressources',  component: RessourcesComponent },
-  { path: 'profile',     component: ProfileComponent },
-  { path: '**',          redirectTo: '' },
+  { path: '',              component: HomeComponent },
+  { path: 'themes',        component: ThemeListComponent },
+  { path: 'themes/:id',    component: ThemeDetailComponent },
+  { path: 'fiches/:id',    component: FicheDetailComponent },
+  { path: 'ressources',    component: RessourcesComponent },
+  { path: 'quiz',          component: QuizDemarrerComponent },
+  { path: 'quiz/:id',      component: QuizSessionComponent },
+  { path: 'historique',    component: HistoriqueListComponent },
+  { path: 'historique/:id', component: HistoriqueDetailComponent },
+  { path: 'questions',     component: QuestionsAdminComponent },
+  { path: 'profile',       component: ProfileComponent },
+  { path: '**',            redirectTo: '' },
 ];

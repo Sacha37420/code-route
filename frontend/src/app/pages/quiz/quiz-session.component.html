@@ -1,0 +1,78 @@
+<main class="page">
+  @if (phase() === 'erreur') {
+    <div class="card erreur-card">
+      <p>{{ erreur() }}</p>
+      <a routerLink="/quiz" class="btn-primary">Redémarrer un quiz</a>
+    </div>
+  } @else if (phase() === 'termine') {
+    <div class="card resultat-card">
+      <h1>Quiz terminé</h1>
+      <p class="score">{{ sessionFinale()?.score }} / {{ sessionFinale()?.nombre_questions }}</p>
+      <div class="resultat-actions">
+        <button class="btn-primary" type="button" (click)="voirCorrection()">Voir la correction détaillée</button>
+        <a routerLink="/quiz" class="btn-secondary">Nouveau quiz</a>
+      </div>
+    </div>
+  } @else if (question; as q) {
+    <header class="page-header quiz-header">
+      <span class="hint">Question {{ index() + 1 }} / {{ questions.length }} — {{ q.theme_nom }}</span>
+      <span class="badge">{{ q.difficulte }}</span>
+    </header>
+
+    <div class="card question-card">
+      @if (q.illustration_path) {
+        <figure class="illustration">
+          <app-protected-image [url]="illustrationUrl()" [alt]="q.enonce" />
+          @if (q.illustration_credit) { <figcaption>{{ q.illustration_credit }}</figcaption> }
+        </figure>
+      }
+
+      <h2>{{ q.enonce }}</h2>
+
+      <div class="reponses">
+        @for (r of q.reponses; track r.id) {
+          @if (phase() === 'repondre') {
+            <label class="reponse-item" [class.selected]="isSelected(r.id)">
+              <input
+                [type]="q.type === 'qcm_multiple' ? 'checkbox' : 'radio'"
+                name="reponse"
+                [checked]="isSelected(r.id)"
+                (change)="q.type === 'qcm_multiple' ? toggleMultiple(r.id) : choisirUnique(r.id)"
+              />
+              {{ r.texte }}
+            </label>
+          }
+        }
+      </div>
+
+      @if (phase() === 'repondre') {
+        <button class="btn-primary" type="button" [disabled]="selection.size === 0" (click)="valider()">
+          Valider
+        </button>
+      }
+
+      @if (phase() === 'correction' && derniereCorrection(); as res) {
+        <div class="correction" [class.ok]="res.correcte" [class.ko]="!res.correcte">
+          <p class="verdict">{{ res.correcte ? '✔ Bonne réponse' : '✘ Réponse incorrecte' }}</p>
+
+          <ul class="correction-reponses">
+            @for (r of res.question.reponses; track r.id) {
+              <li [class.correcte]="r.correcte">
+                {{ r.texte }} {{ r.correcte ? '✔' : '' }}
+                @if (!r.correcte && r.explication) { <span class="explication">— {{ r.explication }}</span> }
+              </li>
+            }
+          </ul>
+
+          @if (res.question.explication_generale) {
+            <p class="explication-generale">{{ res.question.explication_generale }}</p>
+          }
+
+          <button class="btn-primary" type="button" (click)="suivant()">
+            {{ estDerniere ? 'Terminer le quiz' : 'Question suivante' }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+</main>
