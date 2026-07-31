@@ -39,12 +39,18 @@ export class AppComponent implements OnInit {
     { path: '/themes',     label: 'Fiches de révision', abbr: 'Fi' },
     { path: '/quiz',       label: 'Quiz',              abbr: 'Qz' },
     { path: '/historique', label: 'Mon historique',    abbr: 'Hi' },
+    { path: '/bilan',      label: 'Mon bilan',         abbr: 'Bi' },
     { path: '/ressources', label: 'Autres ressources', abbr: 'Re' },
     { path: '/profile',    label: 'Profil',            abbr: 'Pr' },
   ];
 
+  private readonly adminNavItems: NavItem[] = [
+    { path: '/questions',    label: 'Banque de questions', abbr: 'Qu' },
+    { path: '/parametrage',  label: 'Paramétrage',         abbr: 'Pa' },
+  ];
+
   navItems = computed<NavItem[]>(() => this.isAdmin()
-    ? [...this.baseNavItems, { path: '/questions', label: 'Banque de questions', abbr: 'Qu' }]
+    ? [...this.baseNavItems, ...this.adminNavItems]
     : this.baseNavItems);
 
   @ViewChild('closeBtn') private closeBtnRef?: ElementRef<HTMLButtonElement>;

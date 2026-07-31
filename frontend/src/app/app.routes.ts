@@ -10,6 +10,8 @@ import { QuizSessionComponent }       from './pages/quiz/quiz-session.component'
 import { HistoriqueListComponent }    from './pages/historique/historique-list.component';
 import { HistoriqueDetailComponent }  from './pages/historique/historique-detail.component';
 import { QuestionsAdminComponent }    from './pages/questions/questions-admin.component';
+import { ParametrageComponent }       from './pages/parametrage/parametrage.component';
+import { BilanComponent }             from './pages/bilan/bilan.component';
 
 export const routes: Routes = [
   { path: '',              component: HomeComponent },
@@ -21,7 +23,9 @@ export const routes: Routes = [
   { path: 'quiz/:id',      component: QuizSessionComponent },
   { path: 'historique',    component: HistoriqueListComponent },
   { path: 'historique/:id', component: HistoriqueDetailComponent },
+  { path: 'bilan',         component: BilanComponent },
   { path: 'questions',     component: QuestionsAdminComponent },
+  { path: 'parametrage',   component: ParametrageComponent },
   { path: 'profile',       component: ProfileComponent },
   { path: '**',            redirectTo: '' },
 ];

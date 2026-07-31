@@ -1,6 +1,9 @@
 from rest_framework import serializers
 
-from .models import Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse
+from .models import (
+    Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse,
+    ConfigurationMistral, AnalyseIA,
+)
 
 
 class ThemeSerializer(serializers.ModelSerializer):
@@ -151,3 +154,39 @@ class QuizSessionDetailSerializer(serializers.ModelSerializer):
             'id', 'date_debut', 'date_fin', 'themes_filtres',
             'difficulte_filtree', 'nombre_questions', 'score', 'reponses_donnees',
         ]
+
+
+# ── Mistral (Lot 3) ──────────────────────────────────────────────────────────
+
+class ConfigurationMistralSerializer(serializers.ModelSerializer):
+    """`api_key` en écriture seule (jamais renvoyé par l'API, cf. brief) —
+    `has_key` indique juste sa présence, comme restauration/robot-lab."""
+
+    api_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    has_key = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConfigurationMistral
+        fields = ['actif', 'api_key', 'has_key', 'modele', 'updated_at']
+        read_only_fields = ['updated_at']
+
+    def get_has_key(self, obj) -> bool:
+        return bool(obj.api_key)
+
+    def update(self, instance, validated_data):
+        # Une chaîne vide dans api_key ne doit jamais effacer une clé déjà
+        # enregistrée : le formulaire Paramétrage la laisse vide par défaut
+        # (write-only, jamais réaffichée) pour ne pas changer la clé par erreur.
+        nouvelle_cle = validated_data.pop('api_key', '')
+        if nouvelle_cle:
+            instance.api_key = nouvelle_cle
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+class AnalyseIASerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnalyseIA
+        fields = ['id', 'date', 'contenu', 'resume_texte']

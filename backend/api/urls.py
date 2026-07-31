@@ -6,6 +6,7 @@ from .views import (
     IllustrationsDisponiblesView, QuestionViewSet,
     QuizDemarrerView, QuizRepondreView, QuizTerminerView,
     QuizHistoriqueView, QuizSessionDetailView,
+    ConfigurationMistralView, MonBilanView,
 )
 
 router = DefaultRouter()
@@ -23,6 +24,9 @@ urlpatterns = [
     path('quiz/<int:session_id>/', QuizSessionDetailView.as_view()),
     path('quiz/<int:session_id>/repondre/', QuizRepondreView.as_view()),
     path('quiz/<int:session_id>/terminer/', QuizTerminerView.as_view()),
+
+    path('configuration-mistral/', ConfigurationMistralView.as_view()),
+    path('mon-bilan/', MonBilanView.as_view()),
 
     path('', include(router.urls)),
 ]

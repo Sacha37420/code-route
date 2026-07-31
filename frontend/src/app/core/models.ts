@@ -133,3 +133,48 @@ export interface RepondreQuizResponse {
   correcte: boolean;
   question: QuestionReview;
 }
+
+// ── Mistral (Lot 3) ─────────────────────────────────────────────────────────
+
+export interface ConfigurationMistral {
+  actif: boolean;
+  has_key: boolean;
+  modele: string;
+  updated_at: string;
+}
+
+export interface PointFaible {
+  theme: string;
+  taux_reussite: number;
+  explication: string;
+}
+
+export interface ConseilRevision {
+  theme: string;
+  priorite: 'haute' | 'moyenne' | 'basse';
+  conseil: string;
+}
+
+export interface DiagnosticIA {
+  points_forts: string[];
+  points_faibles: PointFaible[];
+  plan_revision: ConseilRevision[];
+  fiches_a_relire: string[];
+  resume: string;
+}
+
+export interface StatsTheme {
+  total: number;
+  correctes: number;
+  taux_reussite: number;
+}
+
+export interface AnalyseIA {
+  id: number;
+  date: string;
+  contenu: {
+    stats_par_theme: Record<string, StatsTheme>;
+    diagnostic?: DiagnosticIA;
+  };
+  resume_texte: string;
+}

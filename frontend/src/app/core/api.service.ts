@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import {
   Me, Theme, FicheCours, IllustrationDisponible, SiteExterne,
   QuestionAdmin, QuizSession, QuizSessionDetail, DemarrerQuizResponse, RepondreQuizResponse,
+  ConfigurationMistral, AnalyseIA,
 } from './models';
 
 interface EnvWindow {
@@ -125,5 +126,16 @@ export class ApiService {
   }
   getSessionDetail(sessionId: number): Observable<QuizSessionDetail> {
     return this.http.get<QuizSessionDetail>(`${this.base}/api/quiz/${sessionId}/`);
+  }
+
+  // ── Mistral / bilan (Lot 3) ─────────────────────────────────────────────
+  getConfigurationMistral(): Observable<ConfigurationMistral> {
+    return this.http.get<ConfigurationMistral>(`${this.base}/api/configuration-mistral/`);
+  }
+  updateConfigurationMistral(data: { actif?: boolean; api_key?: string; modele?: string }): Observable<ConfigurationMistral> {
+    return this.http.patch<ConfigurationMistral>(`${this.base}/api/configuration-mistral/`, data);
+  }
+  getMonBilan(): Observable<AnalyseIA> {
+    return this.http.get<AnalyseIA>(`${this.base}/api/mon-bilan/`);
   }
 }

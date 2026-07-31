@@ -1,0 +1,36 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Paramétrage</h1>
+    <p class="subtitle">Configuration Mistral — clé API globale du lab, réservée aux administrateurs.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else {
+    <form class="card edit-form" (ngSubmit)="enregistrer()">
+      <label class="checkbox-line">
+        <input type="checkbox" [(ngModel)]="actif" name="actif" />
+        Configuration active
+      </label>
+
+      <label>Modèle
+        <input class="input" type="text" [(ngModel)]="modele" name="modele" />
+      </label>
+
+      <label>Clé API
+        <input
+          class="input" type="password" [(ngModel)]="nouvelleCle" name="cle"
+          [placeholder]="config()?.has_key ? '•••••••• (déjà enregistrée — laisser vide pour ne pas la changer)' : 'Aucune clé enregistrée'"
+        />
+      </label>
+
+      <p class="hint">
+        La clé n'est jamais réaffichée une fois enregistrée, y compris ici. Amorcée
+        automatiquement au déploiement depuis <code>MISTRAL_API_KEY</code> si aucune
+        clé n'existait encore.
+      </p>
+
+      <button class="btn-primary" type="submit">{{ enregistre() ? 'Enregistré ✓' : 'Enregistrer' }}</button>
+    </form>
+  }
+</main>

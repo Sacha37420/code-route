@@ -1,0 +1,39 @@
+.resume-card { margin-bottom: var(--space-4); }
+.resume { font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-2); }
+.date-analyse { color: var(--text-mute); font-size: var(--text-xs); }
+
+section.card { margin-bottom: var(--space-4); }
+
+.stats-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  li { display: flex; justify-content: space-between; padding: var(--space-2); border-radius: var(--radius-sm); }
+  .taux { color: var(--success); font-weight: 600; }
+  .taux.faible { color: var(--danger); }
+}
+
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.badge-ok { background: var(--success-tint); color: var(--success); }
+
+.points-faibles, .plan-revision {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.plan-revision li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+
+  p { color: var(--text-mute); margin: var(--space-1) 0; }
+  a { font-size: var(--text-sm); }
+}
+
+.priorite-haute { background: var(--danger-tint); color: var(--danger); }
+.priorite-moyenne { background: var(--warning-tint); color: var(--warning); }
+.priorite-basse { background: var(--accent-tint); color: var(--accent-deep); }

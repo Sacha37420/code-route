@@ -1,0 +1,77 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Mon bilan</h1>
+  </header>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else if (aucunHistorique()) {
+    <div class="card">
+      <p class="hint">Terminez un premier quiz pour obtenir votre bilan personnalisé.</p>
+      <a routerLink="/quiz" class="btn-primary">Démarrer un quiz</a>
+    </div>
+  } @else if (analyse(); as a) {
+    <div class="card resume-card">
+      <p class="resume">{{ a.resume_texte }}</p>
+      <p class="date-analyse">Dernière mise à jour : {{ a.date | date:'dd/MM/yyyy HH:mm' }}</p>
+    </div>
+
+    <section class="card">
+      <h3>Statistiques par thème</h3>
+      <ul class="stats-list">
+        @for (entry of themesEntries(); track entry[0]) {
+          <li>
+            <span class="theme-nom">{{ entry[0] }}</span>
+            <span class="taux" [class.faible]="entry[1].taux_reussite < 60">
+              {{ entry[1].correctes }}/{{ entry[1].total }} ({{ entry[1].taux_reussite }}%)
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    @if (a.contenu.diagnostic; as d) {
+      @if (d.points_forts.length > 0) {
+        <section class="card">
+          <h3>Points forts</h3>
+          <div class="badges">
+            @for (t of d.points_forts; track t) { <span class="badge badge-ok">{{ t }}</span> }
+          </div>
+        </section>
+      }
+
+      @if (d.points_faibles.length > 0) {
+        <section class="card">
+          <h3>Points à travailler</h3>
+          <ul class="points-faibles">
+            @for (pf of d.points_faibles; track pf.theme) {
+              <li>
+                <strong>{{ pf.theme }}</strong> ({{ pf.taux_reussite }}%) — {{ pf.explication }}
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (d.plan_revision.length > 0) {
+        <section class="card">
+          <h3>Plan de révision</h3>
+          <ul class="plan-revision">
+            @for (c of d.plan_revision; track c.theme) {
+              <li>
+                <span class="badge" [class]="prioriteClass(c.priorite)">{{ c.priorite }}</span>
+                <div>
+                  <strong>{{ c.theme }}</strong>
+                  <p>{{ c.conseil }}</p>
+                  @if (themeIdParNom(c.theme); as themeId) {
+                    <a [routerLink]="['/themes', themeId]">Voir les fiches de ce thème →</a>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  }
+</main>

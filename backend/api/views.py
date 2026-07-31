@@ -16,12 +16,16 @@ from rest_framework.views import APIView
 
 from . import storage_client
 from .tasks import analyser_resultats
-from .models import Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse
+from .models import (
+    Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse,
+    ConfigurationMistral, AnalyseIA,
+)
 from .permissions import IsAdmin, IsAdminOrReadOnly
 from .serializers import (
     ThemeSerializer, FicheCoursSerializer, SiteExterneSerializer,
     QuestionAdminSerializer, QuestionQuizSerializer, QuestionReviewSerializer,
     QuizSessionSerializer, QuizSessionDetailSerializer,
+    ConfigurationMistralSerializer, AnalyseIASerializer,
 )
 
 # Chemin storage du manifeste écrit par seed_illustrations_wikimedia (voir ce
@@ -325,3 +329,37 @@ class IllustrationsDisponiblesView(APIView):
         with tmp:
             manifest = json.load(tmp)
         return Response(manifest)
+
+
+class ConfigurationMistralView(APIView):
+    """GET/PATCH /api/configuration-mistral/ — singleton, réservé aux
+    ADMIN_EMAILS. `api_key` n'est jamais renvoyé (write-only, cf. serializer)."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        return Response(ConfigurationMistralSerializer(ConfigurationMistral.get()).data)
+
+    def patch(self, request):
+        serializer = ConfigurationMistralSerializer(
+            ConfigurationMistral.get(), data=request.data, partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class MonBilanView(APIView):
+    """GET /api/mon-bilan/ — dernière analyse IA de l'utilisateur courant.
+    404 tant qu'aucun quiz n'a encore été terminé (pas d'AnalyseIA générée)."""
+
+    def get(self, request):
+        analyse = (
+            AnalyseIA.objects
+            .filter(utilisateur_email__iexact=request.user.email)
+            .order_by('-date')
+            .first()
+        )
+        if analyse is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(AnalyseIASerializer(analyse).data)
