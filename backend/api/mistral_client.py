@@ -1,4 +1,12 @@
-"""Appel à l'API Mistral hébergée — une seule fonction publique : `completer_json()`.
+"""Appel à l'API Mistral hébergée.
+
+Deux familles de fonctions :
+- `completer_json()` — appel simple (Chat Completions, json_object) pour les
+  besoins structurés existants (analyse post-quiz, génération de questions).
+- `demarrer_conversation()` / `continuer_conversation()` — API Agents/Conversations
+  de Mistral, seule à supporter le connecteur intégré `web_search` (« Deepsearch »).
+  Utilisée par l'assistant fiches (chat) et par `rechercher_web()` (vérification
+  factuelle avant génération de questions).
 
 La clé n'est jamais loguée ni renvoyée : elle est lue en base (chiffrée au
 repos, cf. `fields.EncryptedTextField` / `ConfigurationMistral`) juste avant
@@ -41,6 +49,35 @@ def _mistral_class():
     return Mistral
 
 
+def _avec_retries(appel):
+    """Exécute `appel` (fonction sans argument) avec la politique de retry
+    commune (429/5xx/timeout), partagée par les deux familles d'appels."""
+    last_error = None
+    for delay in RETRY_DELAYS + [None]:
+        try:
+            return appel()
+        except Exception as exc:                    # noqa: BLE001 — SDK tiers, erreurs hétérogènes
+            last_error = exc
+            if delay is None or not _is_transient(exc):
+                raise MistralError(f'Appel Mistral en échec : {exc}') from exc
+            time.sleep(delay)
+    raise MistralError(f'Appel Mistral en échec : {last_error}')
+
+
+def _client_et_modele():
+    config = ConfigurationMistral.get()
+    if not config.actif or not config.api_key:
+        raise MistralNonConfigure(
+            "Aucune clé Mistral active — un administrateur doit la configurer "
+            "dans la page Paramétrage."
+        )
+    Mistral = _mistral_class()
+    model = config.modele.strip() or 'mistral-large-latest'
+    return Mistral(api_key=config.api_key), model
+
+
+# ── Chat Completions (sorties JSON structurées) ─────────────────────────────
+
 def _appeler(api_key: str, model: str, system: str, message: str, schema: dict) -> str:
     Mistral = _mistral_class()  # import tardif : dépendance lourde, inutile hors usage IA
     client = Mistral(api_key=api_key)
@@ -73,20 +110,88 @@ def completer_json(system: str, message: str, schema: dict) -> dict:
         )
     model = config.modele.strip() or 'mistral-large-latest'
 
-    last_error = None
-    for delay in RETRY_DELAYS + [None]:
-        try:
-            raw = _appeler(config.api_key, model, system, message, schema)
-            break
-        except Exception as exc:                    # noqa: BLE001 — SDK tiers, erreurs hétérogènes
-            last_error = exc
-            if delay is None or not _is_transient(exc):
-                raise MistralError(f'Appel Mistral en échec : {exc}') from exc
-            time.sleep(delay)
-    else:
-        raise MistralError(f'Appel Mistral en échec : {last_error}')
+    raw = _avec_retries(lambda: _appeler(config.api_key, model, system, message, schema))
 
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:
         raise MistralError(f'Réponse Mistral illisible (JSON invalide) : {exc}') from exc
+
+
+# ── Agents / Conversations (chat + connecteur web_search « Deepsearch ») ────
+
+def _parser_reponse_conversation(response, conversation_id_repli: str = '') -> dict:
+    """Extrait {conversation_id, texte, citations} de la réponse de l'API
+    Conversations. `content` d'une entrée 'message.output' est soit une simple
+    chaîne (pas d'outil utilisé), soit une liste de chunks {type: text|tool_reference}
+    quand un connecteur (ex. web_search) a été sollicité — vérifié en réel
+    (2026-07-31) sur les deux cas."""
+    conversation_id = getattr(response, 'conversation_id', None) or conversation_id_repli
+
+    textes = []
+    citations = []
+    for entree in getattr(response, 'outputs', None) or []:
+        if getattr(entree, 'type', None) != 'message.output':
+            continue
+        content = getattr(entree, 'content', None)
+        if isinstance(content, str):
+            textes.append(content)
+            continue
+        for chunk in content or []:
+            chunk_type = getattr(chunk, 'type', None)
+            if chunk_type == 'text':
+                textes.append(getattr(chunk, 'text', ''))
+            elif chunk_type == 'tool_reference':
+                citations.append({
+                    'title': getattr(chunk, 'title', ''),
+                    'url': getattr(chunk, 'url', ''),
+                })
+
+    return {
+        'conversation_id': conversation_id,
+        'texte': ''.join(t for t in textes if t).strip(),
+        'citations': citations,
+    }
+
+
+def demarrer_conversation(instructions: str, message: str, deepsearch: bool = False) -> dict:
+    """Démarre une conversation Agents Mistral. `deepsearch=True` ajoute le
+    connecteur intégré `web_search` — fonctionne uniquement via cette API
+    (Agents/Conversations), pas via Chat Completions."""
+    client, model = _client_et_modele()
+    tools = [{'type': 'web_search'}] if deepsearch else []
+
+    def _appel():
+        agent = client.beta.agents.create(
+            model=model,
+            name='Assistant code-route',
+            description="Assistant de rédaction des fiches de révision et de vérification factuelle du lab code-route.",
+            instructions=instructions,
+            tools=tools,
+        )
+        return client.beta.conversations.start(agent_id=agent.id, inputs=message)
+
+    response = _avec_retries(_appel)
+    return _parser_reponse_conversation(response)
+
+
+def continuer_conversation(conversation_id: str, message: str) -> dict:
+    client, _model = _client_et_modele()
+    response = _avec_retries(
+        lambda: client.beta.conversations.append(conversation_id=conversation_id, inputs=message)
+    )
+    return _parser_reponse_conversation(response, conversation_id_repli=conversation_id)
+
+
+def rechercher_web(requete: str) -> dict:
+    """Recherche web ponctuelle (Deepsearch), hors chat — utilisée par la
+    génération de questions pour vérifier des faits avant de produire le
+    few-shot. Best-effort : l'appelant doit tolérer un échec sans bloquer."""
+    return demarrer_conversation(
+        "Tu es un assistant de recherche qui vérifie des faits réglementaires "
+        "du Code de la route français. Réponds de façon factuelle, concise "
+        "(quelques phrases), en te fondant sur des sources officielles ou "
+        "fiables trouvées via la recherche web.",
+        requete,
+        deepsearch=True,
+    )

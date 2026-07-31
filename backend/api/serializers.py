@@ -201,7 +201,7 @@ class GenerationIASerializer(serializers.ModelSerializer):
         model = GenerationIA
         fields = [
             'id', 'theme', 'theme_nom', 'difficulte', 'date', 'modele',
-            'nombre_demande', 'nombre_genere', 'statut', 'erreur_message',
+            'nombre_demande', 'nombre_genere', 'statut', 'erreur_message', 'deepsearch',
         ]
         read_only_fields = ['date', 'modele', 'nombre_genere', 'statut', 'erreur_message']
 

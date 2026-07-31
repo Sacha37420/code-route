@@ -2,19 +2,24 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { AssistantFichesComponent } from './assistant-fiches.component';
 import { Difficulte, GenerationIA, GenerationIADetail, QuestionAdmin, Theme } from '../../core/models';
 
 const POLL_INTERVAL_MS = 3000;
 
+type Onglet = 'questions' | 'fiches';
+
 @Component({
   selector: 'app-generation-ia',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, AssistantFichesComponent],
   templateUrl: './generation-ia.component.html',
   styleUrl: './generation-ia.component.scss',
 })
 export class GenerationIaComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
+
+  onglet = signal<Onglet>('questions');
 
   themes = signal<Theme[]>([]);
   generations = signal<GenerationIA[]>([]);
@@ -24,6 +29,7 @@ export class GenerationIaComponent implements OnInit, OnDestroy {
   themeId: number | null = null;
   difficulte: Difficulte = 'facile';
   nombreDemande = 5;
+  deepsearch = false;
 
   ouverte = signal<GenerationIADetail | undefined>(undefined);
 
@@ -59,7 +65,7 @@ export class GenerationIaComponent implements OnInit, OnDestroy {
   lancer(): void {
     if (!this.themeId) return;
     this.lancement.set(true);
-    this.api.lancerGenerationIA(this.themeId, this.difficulte, this.nombreDemande).subscribe({
+    this.api.lancerGenerationIA(this.themeId, this.difficulte, this.nombreDemande, this.deepsearch).subscribe({
       next: () => {
         this.lancement.set(false);
         this.charger();

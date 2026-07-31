@@ -1,0 +1,120 @@
+.assistant-fiches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 760px;
+}
+
+.demarrage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+}
+
+.checkbox-line {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--space-2) !important;
+
+  input { width: 20px; height: 20px; }
+}
+
+.conversation-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .btn-secondary { margin-left: auto; }
+}
+
+.badge-deepsearch { background: var(--success-tint); color: var(--success); }
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  &.admin { align-items: flex-end; }
+  &.assistant { align-items: flex-start; }
+}
+
+.bulle {
+  max-width: 90%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--border);
+
+  ::ng-deep p { margin-bottom: var(--space-2); }
+  ::ng-deep p:last-child { margin-bottom: 0; }
+  ::ng-deep ul, ::ng-deep ol { margin: 0 0 var(--space-2) var(--space-5); }
+  ::ng-deep code { background: var(--accent-tint); padding: 2px 6px; border-radius: 4px; }
+}
+
+.message.admin .bulle { background: var(--accent-tint); border-color: transparent; }
+
+.citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  max-width: 90%;
+
+  .citations-label { color: var(--text-mute); font-weight: 600; }
+  a { color: var(--text-mute); }
+}
+
+.proposition-card {
+  max-width: 90%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: var(--accent-tint);
+}
+
+.proposition-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.proposition-contenu {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  max-height: 300px;
+  overflow-y: auto;
+
+  ::ng-deep p { margin-bottom: var(--space-2); }
+  ::ng-deep h2, ::ng-deep h3 { margin: var(--space-3) 0 var(--space-1); }
+}
+
+.applique { color: var(--success); font-weight: 600; }
+
+.erreur { color: var(--danger); font-size: var(--text-sm); }
+
+.saisie-form {
+  display: flex;
+  gap: var(--space-2);
+
+  .input { flex: 1; }
+}

@@ -134,8 +134,23 @@ def generer_questions(generation_id: int) -> None:
         generation.save(update_fields=['statut', 'erreur_message'])
         return
 
+    contexte_verifie = ''
+    if generation.deepsearch:
+        # Best-effort : un échec de la recherche web ne doit jamais bloquer la
+        # génération elle-même, seulement priver le prompt de ce contexte en plus.
+        try:
+            resultat_recherche = mistral_client.rechercher_web(
+                f"Vérifie les règles actuelles du Code de la route français pour le "
+                f"thème « {generation.theme.nom} », niveau {generation.difficulte}, "
+                f"pertinentes pour fiabiliser des questions d'examen théorique."
+            )
+            contexte_verifie = resultat_recherche['texte']
+        except (mistral_client.MistralNonConfigure, mistral_client.MistralError):
+            pass
+
     system, message, schema = prompts_mistral.construire_prompt_generation(
         generation.theme.nom, generation.difficulte, generation.nombre_demande, echantillon,
+        contexte_verifie=contexte_verifie,
     )
     generation.prompt_utilise = message
 

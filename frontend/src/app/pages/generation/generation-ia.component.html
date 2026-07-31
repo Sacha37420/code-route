@@ -1,93 +1,110 @@
 <main class="page">
   <header class="page-header">
-    <h1>Génération IA de questions</h1>
+    <h1>Génération IA</h1>
     <p class="subtitle">
-      Mistral génère de nouvelles questions à partir d'un échantillon de questions déjà
-      validées du même thème/difficulté. Rien n'est jamais publié directement — chaque
-      question générée reste « proposée » jusqu'à validation manuelle ci-dessous.
+      Rien n'est jamais publié directement — chaque proposition (question ou fiche)
+      reste en attente jusqu'à validation manuelle explicite.
     </p>
   </header>
 
-  <form class="card lancer-form" (ngSubmit)="lancer()">
-    <label>Thème
-      <select class="input" [(ngModel)]="themeId" name="theme" required>
-        <option [ngValue]="null" disabled>Choisir un thème</option>
-        @for (t of themes(); track t.id) { <option [ngValue]="t.id">{{ t.nom }}</option> }
-      </select>
-    </label>
-    <label>Difficulté
-      <select class="input" [(ngModel)]="difficulte" name="difficulte">
-        <option value="facile">Facile</option>
-        <option value="moyen">Moyen</option>
-        <option value="difficile">Difficile</option>
-      </select>
-    </label>
-    <label>Nombre demandé
-      <input class="input" type="number" min="1" max="20" [(ngModel)]="nombreDemande" name="nombre" />
-    </label>
-    <button class="btn-primary" type="submit" [disabled]="lancement() || !themeId">
-      {{ lancement() ? 'Lancement…' : 'Lancer la génération' }}
+  <div class="onglets">
+    <button class="onglet" type="button" [class.actif]="onglet() === 'questions'" (click)="onglet.set('questions')">
+      Générer des questions
     </button>
-  </form>
+    <button class="onglet" type="button" [class.actif]="onglet() === 'fiches'" (click)="onglet.set('fiches')">
+      Assistant fiches
+    </button>
+  </div>
 
-  @if (ouverte(); as g) {
-    <section class="card resultat-generation">
-      <div class="resultat-head">
-        <h3>{{ g.theme_nom }} — {{ g.difficulte }} ({{ g.statut }})</h3>
-        <button class="btn-secondary" type="button" (click)="fermer()">Fermer</button>
-      </div>
+  @if (onglet() === 'questions') {
+    <form class="card lancer-form" (ngSubmit)="lancer()">
+      <label>Thème
+        <select class="input" [(ngModel)]="themeId" name="theme" required>
+          <option [ngValue]="null" disabled>Choisir un thème</option>
+          @for (t of themes(); track t.id) { <option [ngValue]="t.id">{{ t.nom }}</option> }
+        </select>
+      </label>
+      <label>Difficulté
+        <select class="input" [(ngModel)]="difficulte" name="difficulte">
+          <option value="facile">Facile</option>
+          <option value="moyen">Moyen</option>
+          <option value="difficile">Difficile</option>
+        </select>
+      </label>
+      <label>Nombre demandé
+        <input class="input" type="number" min="1" max="20" [(ngModel)]="nombreDemande" name="nombre" />
+      </label>
+      <label class="checkbox-line">
+        <input type="checkbox" [(ngModel)]="deepsearch" name="deepsearch" />
+        Deepsearch (vérification factuelle par recherche web avant génération)
+      </label>
+      <button class="btn-primary" type="submit" [disabled]="lancement() || !themeId">
+        {{ lancement() ? 'Lancement…' : 'Lancer la génération' }}
+      </button>
+    </form>
 
-      @if (g.statut === 'en_cours') {
-        <p class="hint">Génération en cours… (actualisation automatique)</p>
-      } @else if (g.statut === 'erreur') {
-        <p class="erreur">{{ g.erreur_message }}</p>
-      } @else {
-        <p class="hint">{{ g.nombre_genere }} question(s) générée(s) sur {{ g.nombre_demande }} demandée(s).</p>
+    @if (ouverte(); as g) {
+      <section class="card resultat-generation">
+        <div class="resultat-head">
+          <h3>{{ g.theme_nom }} — {{ g.difficulte }} ({{ g.statut }})</h3>
+          <button class="btn-secondary" type="button" (click)="fermer()">Fermer</button>
+        </div>
 
-        <ul class="question-list">
-          @for (q of g.questions; track q.id) {
-            <li class="card question-item">
-              <div class="question-item-head">
-                <span class="badge" [class]="'statut-' + q.statut">{{ q.statut }}</span>
-              </div>
-              <p class="enonce">{{ q.enonce }}</p>
-              <ul class="reponses-apercu">
-                @for (r of q.reponses; track r.id) {
-                  <li [class.correcte]="r.correcte">{{ r.texte }} {{ r.correcte ? '✔' : '' }}</li>
-                }
-              </ul>
-              @if (q.explication_generale) { <p class="explication">{{ q.explication_generale }}</p> }
+        @if (g.statut === 'en_cours') {
+          <p class="hint">Génération en cours… (actualisation automatique)</p>
+        } @else if (g.statut === 'erreur') {
+          <p class="erreur">{{ g.erreur_message }}</p>
+        } @else {
+          <p class="hint">{{ g.nombre_genere }} question(s) générée(s) sur {{ g.nombre_demande }} demandée(s).</p>
 
-              @if (q.statut === 'proposee') {
-                <div class="question-item-actions">
-                  <button class="btn-primary" type="button" (click)="valider(q)">Valider</button>
-                  <button class="btn-danger" type="button" (click)="rejeter(q)">Rejeter</button>
+          <ul class="question-list">
+            @for (q of g.questions; track q.id) {
+              <li class="card question-item">
+                <div class="question-item-head">
+                  <span class="badge" [class]="'statut-' + q.statut">{{ q.statut }}</span>
                 </div>
-              }
-            </li>
-          }
-        </ul>
-      }
-    </section>
-  }
+                <p class="enonce">{{ q.enonce }}</p>
+                <ul class="reponses-apercu">
+                  @for (r of q.reponses; track r.id) {
+                    <li [class.correcte]="r.correcte">{{ r.texte }} {{ r.correcte ? '✔' : '' }}</li>
+                  }
+                </ul>
+                @if (q.explication_generale) { <p class="explication">{{ q.explication_generale }}</p> }
 
-  <h3>Historique</h3>
-  @if (loading()) {
-    <p class="hint">Chargement…</p>
+                @if (q.statut === 'proposee') {
+                  <div class="question-item-actions">
+                    <button class="btn-primary" type="button" (click)="valider(q)">Valider</button>
+                    <button class="btn-danger" type="button" (click)="rejeter(q)">Rejeter</button>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <h3>Historique</h3>
+    @if (loading()) {
+      <p class="hint">Chargement…</p>
+    } @else {
+      <ul class="historique-list">
+        @for (g of generations(); track g.id) {
+          <li>
+            <button class="card generation-item" type="button" (click)="voir(g.id)">
+              <span>{{ g.theme_nom }} — {{ g.difficulte }}</span>
+              @if (g.deepsearch) { <span class="badge badge-deepsearch">Deepsearch</span> }
+              <span class="badge" [class]="'statut-' + g.statut">{{ g.statut }}</span>
+              <span class="hint">{{ g.date | date:'dd/MM/yyyy HH:mm' }}</span>
+            </button>
+          </li>
+        }
+        @empty {
+          <p class="hint">Aucune génération lancée pour l'instant.</p>
+        }
+      </ul>
+    }
   } @else {
-    <ul class="historique-list">
-      @for (g of generations(); track g.id) {
-        <li>
-          <button class="card generation-item" type="button" (click)="voir(g.id)">
-            <span>{{ g.theme_nom }} — {{ g.difficulte }}</span>
-            <span class="badge" [class]="'statut-' + g.statut">{{ g.statut }}</span>
-            <span class="hint">{{ g.date | date:'dd/MM/yyyy HH:mm' }}</span>
-          </button>
-        </li>
-      }
-      @empty {
-        <p class="hint">Aucune génération lancée pour l'instant.</p>
-      }
-    </ul>
+    <app-assistant-fiches />
   }
 </main>

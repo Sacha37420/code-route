@@ -1,5 +1,8 @@
 <ng-template #navList let-onNavigate="onNavigate">
   @for (item of navItems(); track item.label) {
+    @if (item.section) {
+      <span class="nav-section">{{ item.section }}</span>
+    }
     <a
       [routerLink]="item.path"
       routerLinkActive="active"

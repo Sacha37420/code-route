@@ -10,6 +10,7 @@ interface NavItem {
   abbr: string;
   path: string;
   exact?: boolean;
+  section?: string;
 }
 
 const MOBILE_CLOSE_ANIM_MS = 220;
@@ -35,17 +36,17 @@ export class AppComponent implements OnInit {
   protected closeMobileFn = (): void => this.closeMobile();
 
   private readonly baseNavItems: NavItem[] = [
+    { path: '/bilan',      label: 'Mon bilan',         abbr: 'Bi', section: 'Apprendre' },
     { path: '/themes',     label: 'Fiches de révision', abbr: 'Fi' },
     { path: '/quiz',       label: 'Quiz',              abbr: 'Qz' },
     { path: '/historique', label: 'Mon historique',    abbr: 'Hi' },
-    { path: '/bilan',      label: 'Mon bilan',         abbr: 'Bi' },
     { path: '/ressources', label: 'Autres ressources', abbr: 'Re' },
   ];
 
   private readonly adminNavItems: NavItem[] = [
+    { path: '/parametrage',    label: 'Paramétrage',         abbr: 'Pa', section: 'Paramètres' },
     { path: '/questions',      label: 'Banque de questions', abbr: 'Qu' },
     { path: '/generation-ia',  label: 'Génération IA',       abbr: 'Ge' },
-    { path: '/parametrage',    label: 'Paramétrage',         abbr: 'Pa' },
   ];
 
   navItems = computed<NavItem[]>(() => this.isAdmin()

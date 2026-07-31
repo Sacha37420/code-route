@@ -194,8 +194,39 @@ export interface GenerationIA {
   nombre_genere: number;
   statut: StatutGeneration;
   erreur_message: string;
+  deepsearch: boolean;
 }
 
 export interface GenerationIADetail extends GenerationIA {
   questions: QuestionAdmin[];
+}
+
+// ── Assistant fiches (chat + Deepsearch) ────────────────────────────────────
+
+export interface Citation {
+  title: string;
+  url: string;
+}
+
+export interface PropositionFiche {
+  action: 'creer' | 'modifier';
+  fiche_id: number | null;
+  titre: string;
+  contenu: string;
+  illustration_credit?: string;
+}
+
+export interface AssistantMessage {
+  role: 'admin' | 'assistant';
+  texte: string;
+  citations?: Citation[];
+  proposition?: PropositionFiche | null;
+  propositionAppliquee?: boolean;
+}
+
+export interface AssistantReponse {
+  conversation_id: string;
+  reponse_texte: string;
+  proposition: PropositionFiche | null;
+  citations: Citation[];
 }

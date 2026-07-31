@@ -1,3 +1,36 @@
+.onglets {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.onglet {
+  padding: var(--space-3) var(--space-4);
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-mute);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+
+  &:hover { color: var(--text); }
+  &.actif { color: var(--accent); border-bottom-color: var(--accent); }
+}
+
+.checkbox-line {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--space-2) !important;
+
+  input { width: 20px; height: 20px; }
+}
+
+.badge-deepsearch { background: var(--success-tint); color: var(--success); }
+
 .lancer-form {
   display: flex;
   flex-wrap: wrap;

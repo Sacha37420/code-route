@@ -8,6 +8,7 @@ from .views import (
     QuizHistoriqueView, QuizSessionDetailView,
     ConfigurationMistralView, MonBilanView,
     GenerationIALancerView, GenerationIAListView, GenerationIAStatutView,
+    AssistantFichesView,
 )
 
 router = DefaultRouter()
@@ -32,6 +33,8 @@ urlpatterns = [
     path('generation-ia/', GenerationIAListView.as_view()),
     path('generation-ia/lancer/', GenerationIALancerView.as_view()),
     path('generation-ia/<int:generation_id>/statut/', GenerationIAStatutView.as_view()),
+
+    path('assistant-fiches/message/', AssistantFichesView.as_view()),
 
     path('', include(router.urls)),
 ]

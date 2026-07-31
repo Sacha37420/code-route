@@ -1,5 +1,6 @@
 import json
 import mimetypes
+import re
 from uuid import uuid4
 
 from django.conf import settings
@@ -14,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import storage_client
+from . import mistral_client, prompts_mistral, storage_client
 from .tasks import analyser_resultats, generer_questions
 from .models import (
     Theme, FicheCours, SiteExterne, Question, Reponse, QuizSession, QuizReponse,
@@ -382,9 +383,11 @@ class GenerationIALancerView(APIView):
         except (TypeError, ValueError):
             return Response({'detail': 'nombre_demande invalide.'}, status=status.HTTP_400_BAD_REQUEST)
         nombre_demande = max(1, min(nombre_demande, 20))
+        deepsearch = bool(request.data.get('deepsearch'))
 
         generation = GenerationIA.objects.create(
-            theme=theme, difficulte=difficulte, nombre_demande=nombre_demande, statut='en_cours',
+            theme=theme, difficulte=difficulte, nombre_demande=nombre_demande,
+            statut='en_cours', deepsearch=deepsearch,
         )
         generer_questions.delay(generation.id)
         return Response(GenerationIASerializer(generation).data, status=status.HTTP_201_CREATED)
@@ -412,3 +415,62 @@ class GenerationIAStatutView(APIView):
             pk=generation_id,
         )
         return Response(GenerationIADetailSerializer(generation).data)
+
+
+_RE_BLOC_JSON = re.compile(r'```json\s*(\{.*?\})\s*```', re.DOTALL)
+
+
+def _extraire_proposition(texte: str) -> dict | None:
+    """Cherche un bloc ```json {...} ``` dans la réponse de l'assistant fiches
+    et le désérialise — best-effort, une réponse purement conversationnelle
+    (question, discussion) n'en contient légitimement aucun."""
+    match = _RE_BLOC_JSON.search(texte)
+    if not match:
+        return None
+    try:
+        proposition = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    if proposition.get('action') not in ('creer', 'modifier'):
+        return None
+    return proposition
+
+
+class AssistantFichesView(APIView):
+    """POST /api/assistant-fiches/message/ — chat admin pour analyser, corriger,
+    étendre ou créer des fiches de cours, avec le contenu déjà existant du thème
+    en contexte. `deepsearch=True` (au premier message seulement — les outils
+    sont fixés au démarrage de la conversation) active le connecteur web_search."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        message = (request.data.get('message') or '').strip()
+        if not message:
+            return Response({'detail': 'message requis.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        conversation_id = request.data.get('conversation_id')
+        deepsearch = bool(request.data.get('deepsearch'))
+
+        try:
+            if conversation_id:
+                resultat = mistral_client.continuer_conversation(conversation_id, message)
+            else:
+                theme = get_object_or_404(Theme, pk=request.data.get('theme_id'))
+                fiches = [
+                    {'id': f.id, 'titre': f.titre, 'contenu': f.contenu}
+                    for f in FicheCours.objects.filter(theme=theme).order_by('ordre')
+                ]
+                instructions = prompts_mistral.construire_contexte_assistant_fiches(theme.nom, fiches)
+                resultat = mistral_client.demarrer_conversation(instructions, message, deepsearch=deepsearch)
+        except mistral_client.MistralNonConfigure as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except mistral_client.MistralError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({
+            'conversation_id': resultat['conversation_id'],
+            'reponse_texte': resultat['texte'],
+            'proposition': _extraire_proposition(resultat['texte']),
+            'citations': resultat['citations'],
+        })

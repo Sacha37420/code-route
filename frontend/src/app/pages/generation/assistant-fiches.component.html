@@ -1,0 +1,79 @@
+<div class="assistant-fiches">
+  @if (!conversationDemarree) {
+    <div class="card demarrage">
+      <label>Thème
+        <select class="input" [(ngModel)]="themeId" name="theme">
+          @for (t of themes(); track t.id) { <option [ngValue]="t.id">{{ t.nom }}</option> }
+        </select>
+      </label>
+      <label class="checkbox-line">
+        <input type="checkbox" [(ngModel)]="deepsearch" name="deepsearch" />
+        Activer Deepsearch (recherche web pour vérifier les faits — fixé au démarrage de la conversation)
+      </label>
+      <p class="hint">
+        L'assistant voit déjà toutes les fiches existantes du thème choisi. Demandez-lui
+        d'analyser, corriger, étendre une fiche, ou d'en proposer une nouvelle.
+      </p>
+    </div>
+  } @else {
+    <div class="conversation-head">
+      <span class="badge">{{ themes().find(t => t.id === themeId)?.nom }}</span>
+      @if (deepsearch) { <span class="badge badge-deepsearch">Deepsearch actif</span> }
+      <button class="btn-secondary" type="button" (click)="nouvelleConversation()">Nouvelle conversation</button>
+    </div>
+  }
+
+  <div class="messages" #zoneMessages>
+    @for (msg of messages(); track $index) {
+      <div class="message" [class.admin]="msg.role === 'admin'" [class.assistant]="msg.role === 'assistant'">
+        <div class="bulle" [innerHTML]="rendreMarkdown(msg.texte)"></div>
+
+        @if (msg.citations && msg.citations.length > 0) {
+          <div class="citations">
+            <span class="citations-label">Sources :</span>
+            @for (c of msg.citations; track c.url) {
+              <a [href]="c.url" target="_blank" rel="noopener noreferrer">{{ c.title || c.url }}</a>
+            }
+          </div>
+        }
+
+        @if (msg.proposition; as p) {
+          <div class="proposition-card">
+            <div class="proposition-head">
+              <span class="badge">{{ p.action === 'creer' ? 'Nouvelle fiche' : 'Modification de fiche' }}</span>
+              <strong>{{ p.titre }}</strong>
+            </div>
+            <div class="proposition-contenu" [innerHTML]="rendreMarkdown(p.contenu)"></div>
+            @if (p.illustration_credit) {
+              <p class="hint">Attribution proposée : {{ p.illustration_credit }}</p>
+            }
+            @if (msg.propositionAppliquee) {
+              <p class="applique">✔ Appliqué</p>
+            } @else {
+              <button class="btn-primary" type="button" [disabled]="applicationEnCours()" (click)="appliquer(msg)">
+                {{ applicationEnCours() ? 'Application…' : 'Appliquer' }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (envoiEnCours()) {
+      <div class="message assistant"><div class="bulle hint">L'assistant réfléchit…</div></div>
+    }
+  </div>
+
+  @if (erreur()) {
+    <p class="erreur">{{ erreur() }}</p>
+  }
+
+  <form class="saisie-form" (ngSubmit)="envoyer()">
+    <input
+      class="input" type="text" [(ngModel)]="saisie" name="saisie"
+      placeholder="Ex. : corrige la fiche sur les ronds-points, ou ajoute une fiche sur…"
+      [disabled]="envoiEnCours() || (!conversationDemarree && !themeId)"
+    />
+    <button class="btn-primary" type="submit" [disabled]="envoiEnCours() || !saisie.trim()">Envoyer</button>
+  </form>
+</div>

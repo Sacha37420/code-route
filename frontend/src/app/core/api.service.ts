@@ -5,6 +5,7 @@ import {
   Me, Theme, FicheCours, IllustrationDisponible, SiteExterne,
   QuestionAdmin, QuizSession, QuizSessionDetail, DemarrerQuizResponse, RepondreQuizResponse,
   ConfigurationMistral, AnalyseIA, GenerationIA, GenerationIADetail, Difficulte,
+  AssistantReponse,
 } from './models';
 
 interface EnvWindow {
@@ -143,12 +144,19 @@ export class ApiService {
   getGenerationsIA(): Observable<GenerationIA[]> {
     return this.http.get<GenerationIA[]>(`${this.base}/api/generation-ia/`);
   }
-  lancerGenerationIA(themeId: number, difficulte: Difficulte, nombreDemande: number): Observable<GenerationIA> {
+  lancerGenerationIA(themeId: number, difficulte: Difficulte, nombreDemande: number, deepsearch: boolean): Observable<GenerationIA> {
     return this.http.post<GenerationIA>(`${this.base}/api/generation-ia/lancer/`, {
-      theme_id: themeId, difficulte, nombre_demande: nombreDemande,
+      theme_id: themeId, difficulte, nombre_demande: nombreDemande, deepsearch,
     });
   }
   getStatutGenerationIA(id: number): Observable<GenerationIADetail> {
     return this.http.get<GenerationIADetail>(`${this.base}/api/generation-ia/${id}/statut/`);
+  }
+
+  // ── Assistant fiches (chat + Deepsearch) ────────────────────────────────
+  envoyerMessageAssistantFiches(payload: {
+    theme_id?: number; message: string; conversation_id?: string; deepsearch?: boolean;
+  }): Observable<AssistantReponse> {
+    return this.http.post<AssistantReponse>(`${this.base}/api/assistant-fiches/message/`, payload);
   }
 }

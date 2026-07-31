@@ -54,6 +54,10 @@ class GenerationIA(models.Model):
     nombre_genere = models.PositiveIntegerField(default=0)
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_cours')
     erreur_message = models.TextField(blank=True, default='')
+    deepsearch = models.BooleanField(
+        default=False,
+        help_text="Vérification factuelle par recherche web (connecteur Mistral web_search) avant génération.",
+    )
 
     class Meta:
         db_table = 'generations_ia'

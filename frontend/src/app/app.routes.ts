@@ -13,7 +13,7 @@ import { BilanComponent }             from './pages/bilan/bilan.component';
 import { GenerationIaComponent }      from './pages/generation/generation-ia.component';
 
 export const routes: Routes = [
-  { path: '',              redirectTo: 'themes', pathMatch: 'full' },
+  { path: '',              redirectTo: 'bilan', pathMatch: 'full' },
   { path: 'themes',        component: ThemeListComponent },
   { path: 'themes/:id',    component: ThemeDetailComponent },
   { path: 'fiches/:id',    component: FicheDetailComponent },
@@ -26,5 +26,5 @@ export const routes: Routes = [
   { path: 'questions',     component: QuestionsAdminComponent },
   { path: 'generation-ia', component: GenerationIaComponent },
   { path: 'parametrage',   component: ParametrageComponent },
-  { path: '**',            redirectTo: 'themes' },
+  { path: '**',            redirectTo: 'bilan' },
 ];
