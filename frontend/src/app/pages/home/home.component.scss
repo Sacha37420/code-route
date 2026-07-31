@@ -43,20 +43,10 @@
     font-weight: 600;
   }
 
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
+  .quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     justify-content: center;
-    min-height: 44px;
-    padding: 0 var(--space-5);
-    background: var(--accent);
-    color: var(--accent-on);
-    text-decoration: none;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: var(--text-sm);
-    transition: opacity 0.15s;
-
-    &:hover { opacity: 0.85; }
   }
 }

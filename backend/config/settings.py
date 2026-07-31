@@ -59,6 +59,32 @@ DB_SCHEMA = _DB_SCHEMA
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 USE_TZ = True
 
+# ── Celery ─────────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://redis:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/1')
+CELERY_TASK_TRACK_STARTED = True
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# ── Administration applicative (séparation simple admin/usager) ────────────────
+# Emails autorisés à accéder à la page « Paramétrage » (ConfigurationMistral) et
+# à la validation des questions générées par IA. Pas de système de rôles complet.
+ADMIN_EMAILS = {
+    e.strip().lower()
+    for e in config('ADMIN_EMAILS', default='').split(',')
+    if e.strip()
+}
+
+# ── Storage (API du lab, pattern carto-lab : token utilisateur forwardé) ───────
+STORAGE_INTERNAL_URL = config('STORAGE_INTERNAL_URL', default='http://storage-backend:8000')
+STORAGE_NAMESPACE = config('STORAGE_NAMESPACE', default='code-route')
+
+# ── Mistral ──────────────────────────────────────────────────────────────────
+# Amorçage unique de ConfigurationMistral au déploiement (voir seed_config_mistral) ;
+# ne jamais réutiliser ailleurs, jamais logué, jamais renvoyé par une API.
+MISTRAL_API_KEY_BOOTSTRAP = config('MISTRAL_API_KEY', default='')
+
 # ── Django REST Framework ──────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

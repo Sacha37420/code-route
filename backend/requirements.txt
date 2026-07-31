@@ -6,3 +6,7 @@ psycopg2-binary>=2.9
 PyJWT>=2.8
 cryptography>=40.0
 django-cors-headers>=3.14.0
+celery>=5.3
+redis>=5.0
+requests>=2.31
+mistralai>=1.2

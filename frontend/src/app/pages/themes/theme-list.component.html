@@ -1,0 +1,43 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Zone documentaire</h1>
+    <p class="subtitle">Fiches de révision organisées par thème de l'épreuve théorique.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else {
+    <div class="theme-grid">
+      @for (theme of themes(); track theme.id) {
+        <a class="theme-card" [routerLink]="['/themes', theme.id]">
+          <h3>{{ theme.nom }}</h3>
+          @if (theme.description) { <p>{{ theme.description }}</p> }
+        </a>
+      }
+    </div>
+
+    @if (isAdmin()) {
+      <section class="admin-panel">
+        @if (!creating()) {
+          <button class="btn-secondary" type="button" (click)="startCreate()">+ Nouveau thème</button>
+        } @else {
+          <form class="inline-form" (ngSubmit)="submitCreate()">
+            <input class="input" type="text" placeholder="Nom du thème" [(ngModel)]="nouveauNom" name="nom" required />
+            <input class="input" type="text" placeholder="Description (optionnel)" [(ngModel)]="nouvelleDescription" name="description" />
+            <button class="btn-primary" type="submit">Créer</button>
+            <button class="btn-secondary" type="button" (click)="cancelCreate()">Annuler</button>
+          </form>
+        }
+
+        <ul class="admin-list">
+          @for (theme of themes(); track theme.id) {
+            <li>
+              <span>{{ theme.nom }}</span>
+              <button class="btn-danger" type="button" (click)="supprimer(theme)">Supprimer</button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</main>

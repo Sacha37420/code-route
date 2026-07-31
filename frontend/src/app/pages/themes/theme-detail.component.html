@@ -1,0 +1,41 @@
+<main class="page">
+  <a routerLink="/themes" class="back-link">← Tous les thèmes</a>
+
+  <header class="page-header">
+    <h1>{{ theme()?.nom ?? '…' }}</h1>
+    @if (theme()?.description) { <p class="subtitle">{{ theme()!.description }}</p> }
+  </header>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else if (fiches().length === 0) {
+    <p class="hint">Aucune fiche pour ce thème pour l'instant.</p>
+  } @else {
+    <ul class="fiche-list">
+      @for (fiche of fiches(); track fiche.id) {
+        <li>
+          <a [routerLink]="['/fiches', fiche.id]" class="card fiche-link">
+            <h3>{{ fiche.titre }}</h3>
+          </a>
+          @if (isAdmin()) {
+            <button class="btn-danger" type="button" (click)="supprimer(fiche)">Supprimer</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (isAdmin()) {
+    <section class="admin-panel">
+      @if (!creating()) {
+        <button class="btn-secondary" type="button" (click)="startCreate()">+ Nouvelle fiche</button>
+      } @else {
+        <form class="inline-form" (ngSubmit)="submitCreate()">
+          <input class="input" type="text" placeholder="Titre de la fiche" [(ngModel)]="nouveauTitre" name="titre" required />
+          <button class="btn-primary" type="submit">Créer</button>
+          <button class="btn-secondary" type="button" (click)="cancelCreate()">Annuler</button>
+        </form>
+      }
+    </section>
+  }
+</main>

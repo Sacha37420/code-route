@@ -7,23 +7,54 @@ networks:
   dev-net:
     external: true
     name: dev-net
+  code-route-net:
+    driver: bridge
 
 services:
+
+  redis:
+    image: redis:7-alpine
+    container_name: code-route-redis
+    restart: unless-stopped
+    networks:
+      - code-route-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   backend:
     build: ./backend
     container_name: code-route-backend
     restart: unless-stopped
     env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "8096:8000"
     networks:
       - sso-net
       - dev-net
+      - code-route-net
     labels:
       caddy: "${DOMAIN}"
       caddy.handle_path: "/code-route-api/*"
       caddy.handle_path.reverse_proxy: "{{upstreams 8000}}"
+
+  worker:
+    build: ./backend
+    container_name: code-route-worker
+    restart: unless-stopped
+    env_file: .env
+    command: celery -A config worker --loglevel=info --concurrency=2
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - dev-net
+      - code-route-net
 
   frontend:
     build: ./frontend

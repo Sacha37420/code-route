@@ -1,0 +1,62 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Autres ressources</h1>
+    <p class="subtitle">
+      Sites et applications tiers de préparation au code de la route. Ce lab ne collecte
+      aucune donnée depuis ces sites — simple annuaire tenu à jour manuellement.
+    </p>
+  </header>
+
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else {
+    <ul class="site-list">
+      @for (site of sites(); track site.id) {
+        <li class="card site-card">
+          <div class="site-head">
+            <a [href]="site.url" target="_blank" rel="noopener noreferrer">{{ site.nom }}</a>
+            <span class="badge" [class]="'statut-' + site.statut">{{ statutLabels[site.statut] }}</span>
+          </div>
+          @if (site.offre_resume) { <p class="offre">{{ site.offre_resume }}</p> }
+          @if (site.date_verification) {
+            <p class="verif">Vérifié le {{ site.date_verification }}</p>
+          }
+          @if (isAdmin()) {
+            <button class="btn-danger" type="button" (click)="supprimer(site)">Supprimer</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (isAdmin()) {
+    <section class="admin-panel">
+      @if (!creating()) {
+        <button class="btn-secondary" type="button" (click)="startCreate()">+ Nouveau site</button>
+      } @else {
+        <form class="card edit-form" (ngSubmit)="submitCreate()">
+          <label>Nom
+            <input class="input" type="text" [(ngModel)]="nouveau.nom" name="nom" required />
+          </label>
+          <label>URL
+            <input class="input" type="url" [(ngModel)]="nouveau.url" name="url" required />
+          </label>
+          <label>Statut
+            <select class="input" [(ngModel)]="nouveau.statut" name="statut">
+              <option value="gratuit">Gratuit</option>
+              <option value="freemium">Freemium</option>
+              <option value="payant">Payant</option>
+            </select>
+          </label>
+          <label>Résumé de l'offre
+            <textarea class="textarea" [(ngModel)]="nouveau.offre_resume" name="offre_resume" rows="3"></textarea>
+          </label>
+          <div class="form-actions">
+            <button class="btn-primary" type="submit">Créer</button>
+            <button class="btn-secondary" type="button" (click)="cancelCreate()">Annuler</button>
+          </div>
+        </form>
+      }
+    </section>
+  }
+</main>

@@ -1,0 +1,21 @@
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.theme-card {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s;
+
+  &:hover { border-color: var(--accent); }
+
+  h3 { margin-bottom: var(--space-2); }
+  p { color: var(--text-mute); font-size: var(--text-sm); }
+}

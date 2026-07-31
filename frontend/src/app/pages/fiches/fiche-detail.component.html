@@ -1,0 +1,72 @@
+<main class="page">
+  @if (loading()) {
+    <p class="hint">Chargement…</p>
+  } @else if (fiche(); as f) {
+    <a [routerLink]="['/themes', f.theme]" class="back-link">← {{ f.theme_nom }}</a>
+
+    <header class="page-header">
+      <h1>{{ f.titre }}</h1>
+    </header>
+
+    @if (f.illustration_path && !editing()) {
+      <figure class="illustration">
+        <app-protected-image [url]="illustrationUrl()" [alt]="f.titre" />
+        @if (f.illustration_credit) { <figcaption>{{ f.illustration_credit }}</figcaption> }
+      </figure>
+    }
+
+    @if (!editing()) {
+      <div class="markdown-body" [innerHTML]="contenuHtml()"></div>
+
+      @if (isAdmin()) {
+        <div class="admin-panel actions">
+          <button class="btn-secondary" type="button" (click)="startEdit()">Modifier</button>
+          <button class="btn-danger" type="button" (click)="supprimer()">Supprimer</button>
+        </div>
+      }
+    } @else {
+      <form class="card edit-form" (ngSubmit)="submitEdit()">
+        <label>Titre
+          <input class="input" type="text" [(ngModel)]="editTitre" name="titre" required />
+        </label>
+        <label>Contenu (markdown)
+          <textarea class="textarea" [(ngModel)]="editContenu" name="contenu" rows="12"></textarea>
+        </label>
+        <label>Ordre
+          <input class="input" type="number" [(ngModel)]="editOrdre" name="ordre" />
+        </label>
+        <label>Attribution de l'illustration
+          <input class="input" type="text" [(ngModel)]="editCredit" name="credit" placeholder="Auteur, Wikimedia Commons, CC BY-SA" />
+        </label>
+
+        <label>Nouvelle illustration (upload)
+          <input type="file" accept="image/*,.svg" (change)="onFichierChange($event)" />
+        </label>
+
+        <div>
+          <button class="btn-secondary" type="button" (click)="toggleBanque()">
+            {{ showBanque() ? 'Masquer la banque Wikimedia' : 'Choisir dans la banque Wikimedia' }}
+          </button>
+        </div>
+
+        @if (showBanque()) {
+          <div class="banque-grid">
+            @for (item of banque(); track item.relative_path) {
+              <button class="banque-item" type="button" (click)="choisirDansBanque(item)">
+                <span class="banque-nom">{{ item.nom }}</span>
+                <span class="banque-credit">{{ item.credit }}</span>
+              </button>
+            } @empty {
+              <p class="hint">Aucune image amorcée pour l'instant (voir la commande seed_illustrations_wikimedia).</p>
+            }
+          </div>
+        }
+
+        <div class="form-actions">
+          <button class="btn-primary" type="submit">Enregistrer</button>
+          <button class="btn-secondary" type="button" (click)="cancelEdit()">Annuler</button>
+        </div>
+      </form>
+    }
+  }
+</main>
