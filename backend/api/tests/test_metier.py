@@ -554,21 +554,27 @@ class GenerationDeQuestionsTests(CasRoute):
         tasks.generer_questions(self._generation().id)
         self.mistral.beta.agents.create.assert_not_called()
 
-    # DÉFAUT DE PRODUCTION (contrat I4, non corrigé) : Mistral ne garantit que du
-    # JSON, pas sa forme (`json_object`, cf. mistral_client._appeler). Une réponse
-    # valide mais de forme inattendue (ici une liste de chaînes) lève AttributeError
-    # dans la tâche : la génération reste « en_cours » pour toujours, et la page
-    # d'administration l'interroge sans fin. Attendu : statut « erreur ».
-    @unittest.expectedFailure
     def test_reponse_de_forme_inattendue_ne_laisse_pas_la_generation_en_cours(self):
+        """Corrigé le 2026-10-11 : une exception dans la tâche laissait « en_cours » pour toujours."""
         self.activer_mistral()
-        self.mistral_repond(json.dumps({'questions': ['Une question en texte libre']}))
-        g = self._generation()
-        try:
-            tasks.generer_questions(g.id)
-        finally:
-            g.refresh_from_db()
-            self.assertEqual(g.statut, 'erreur')
+        formes = [
+            {'questions': ['Une question en texte libre']},
+            ['pas', 'un', 'objet'],
+            {'questions': {'enonce': 'un objet au lieu d\'une liste'}},
+            {'questions': [{'enonce': 'x', 'reponses': 'oui'}]},
+            {'questions': [{'enonce': 'x', 'reponses': [{'texte': None, 'correcte': True}]}]},
+            # La première est bonne, la seconde casse : rien du lot n'est gardé.
+            {'questions': [self.PRODUCTION['questions'][0], 'cassée']},
+        ]
+        for forme in formes:
+            with self.subTest(forme=forme):
+                self.mistral_repond(json.dumps(forme))
+                g = self._generation()
+                tasks.generer_questions(g.id)
+                g.refresh_from_db()
+                self.assertEqual((g.statut, g.nombre_genere), ('erreur', 0))
+                self.assertIn('forme inattendue', g.erreur_message)
+                self.assertEqual(Question.objects.filter(origine='ia').count(), 0)
 
 
 class ClientMistralTests(CasRoute):

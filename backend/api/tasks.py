@@ -1,4 +1,5 @@
 from celery import shared_task
+from django.db import transaction
 
 # Nombre de questions ratées récentes transmises en contexte à Mistral —
 # borne la taille du prompt, les plus récentes étant les plus pertinentes
@@ -162,31 +163,42 @@ def generer_questions(generation_id: int) -> None:
         generation.save(update_fields=['statut', 'erreur_message', 'prompt_utilise'])
         return
 
+    # Mistral ne garantit que du JSON (`json_object`), pas sa forme : une réponse
+    # valide mais inattendue (liste à la place d'un objet, question en texte
+    # libre…) doit clore la génération en erreur, pas la laisser « en_cours »
+    # pour toujours. La transaction écarte les questions déjà insérées du lot.
     nombre_genere = 0
-    for q_data in resultat.get('questions', []):
-        reponses_data = q_data.get('reponses', [])
-        # Une question sans réponse correcte identifiée est inexploitable dans
-        # un quiz — on l'écarte plutôt que de la proposer cassée à la validation.
-        if not any(r.get('correcte') for r in reponses_data):
-            continue
-        question = Question.objects.create(
-            theme=generation.theme,
-            enonce=q_data.get('enonce', ''),
-            type=q_data.get('type', 'qcm_unique'),
-            difficulte=generation.difficulte,
-            explication_generale=q_data.get('explication_generale', ''),
-            origine='ia',
-            statut='proposee',
-            generation=generation,
-        )
-        for r_data in reponses_data:
-            Reponse.objects.create(
-                question=question,
-                texte=r_data.get('texte', ''),
-                correcte=bool(r_data.get('correcte')),
-                explication=r_data.get('explication') or '',
-            )
-        nombre_genere += 1
+    try:
+        with transaction.atomic():
+            for q_data in resultat.get('questions', []):
+                reponses_data = q_data.get('reponses', [])
+                # Une question sans réponse correcte identifiée est inexploitable dans
+                # un quiz — on l'écarte plutôt que de la proposer cassée à la validation.
+                if not any(r.get('correcte') for r in reponses_data):
+                    continue
+                question = Question.objects.create(
+                    theme=generation.theme,
+                    enonce=q_data.get('enonce', ''),
+                    type=q_data.get('type', 'qcm_unique'),
+                    difficulte=generation.difficulte,
+                    explication_generale=q_data.get('explication_generale', ''),
+                    origine='ia',
+                    statut='proposee',
+                    generation=generation,
+                )
+                for r_data in reponses_data:
+                    Reponse.objects.create(
+                        question=question,
+                        texte=r_data.get('texte', ''),
+                        correcte=bool(r_data.get('correcte')),
+                        explication=r_data.get('explication') or '',
+                    )
+                nombre_genere += 1
+    except Exception as exc:                        # noqa: BLE001 — forme libre venue du modèle
+        generation.statut = 'erreur'
+        generation.erreur_message = f'Réponse Mistral de forme inattendue : {type(exc).__name__}.'
+        generation.save(update_fields=['statut', 'erreur_message', 'prompt_utilise'])
+        return
 
     generation.nombre_genere = nombre_genere
     generation.statut = 'terminee' if nombre_genere > 0 else 'erreur'
