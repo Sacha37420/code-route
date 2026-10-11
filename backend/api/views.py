@@ -219,7 +219,10 @@ class QuizDemarrerView(APIView):
     """POST /api/quiz/demarrer/ — {themes: [id...], difficulte, nombre_questions}."""
 
     def post(self, request):
-        themes_ids = [int(t) for t in request.data.get('themes', []) if str(t).isdigit()]
+        themes = request.data.get('themes') or []
+        if not isinstance(themes, list):
+            return Response({'detail': 'themes doit être une liste.'}, status=status.HTTP_400_BAD_REQUEST)
+        themes_ids = [int(t) for t in themes if str(t).isdigit()]
         difficulte = request.data.get('difficulte') or ''
         try:
             nombre_questions = int(request.data.get('nombre_questions', 10))
@@ -268,10 +271,19 @@ class QuizRepondreView(APIView):
             return Response({'detail': 'Cette session est déjà terminée.'}, status=status.HTTP_400_BAD_REQUEST)
 
         question_id = request.data.get('question')
+        if isinstance(question_id, bool) or not str(question_id).isdigit():
+            return Response({'detail': 'question invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+        question_id = int(question_id)
         quiz_reponse = get_object_or_404(QuizReponse, session=session, question_id=question_id)
         reponses_choisies = request.data.get('reponses_choisies', [])
         if not isinstance(reponses_choisies, list):
             return Response({'detail': 'reponses_choisies doit être une liste.'}, status=status.HTTP_400_BAD_REQUEST)
+        temps_ms = request.data.get('temps_ms')
+        if temps_ms is not None:
+            # Entier positif tenant dans la colonne (PositiveIntegerField).
+            if isinstance(temps_ms, bool) or not str(temps_ms).isdigit() or int(temps_ms) > 2147483647:
+                return Response({'detail': 'temps_ms invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+            temps_ms = int(temps_ms)
 
         correct_ids = set(
             Reponse.objects.filter(question_id=question_id, correcte=True).values_list('id', flat=True)
@@ -281,7 +293,7 @@ class QuizRepondreView(APIView):
 
         quiz_reponse.reponses_choisies = sorted(choisies_ids)
         quiz_reponse.correcte = correcte
-        quiz_reponse.temps_ms = request.data.get('temps_ms')
+        quiz_reponse.temps_ms = temps_ms
         quiz_reponse.save()
 
         question = Question.objects.prefetch_related('reponses').get(pk=question_id)

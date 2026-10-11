@@ -1,6 +1,5 @@
 """Qui lit, modifie, lance quoi : administrateurs (ADMIN_EMAILS) et usagers,
 propriété des sessions de quiz, corrections et clé Mistral jamais exposées."""
-import unittest
 from io import StringIO
 from unittest import mock
 

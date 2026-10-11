@@ -1,7 +1,6 @@
 """Règles métier : moteur de quiz et notation, banque de questions, illustrations
 (storage simulé), tâches d'analyse et de génération, client Mistral, assistant."""
 import json
-import unittest
 from unittest import mock
 
 import requests
@@ -149,17 +148,34 @@ class RepondreEtTerminerTests(CasRoute):
         self.assertEqual((ligne['correcte'], ligne['reponses_choisies']), (True, self.u_ok))
         self.assertTrue(any(x['correcte'] for x in ligne['question']['reponses']))
 
-    # DÉFAUT DE PRODUCTION (contrat I4, non corrigé) : trois entrées mal formées de
-    # l'usager font une erreur 500 au lieu d'un 400 — `temps_ms` non numérique
-    # (ValueError à l'enregistrement), `question` non numérique (ValueError dans
-    # get_object_or_404), `themes` qui n'est pas une liste (TypeError dans
-    # QuizDemarrerView). Chacune vérifiée séparément le 2026-10-11.
-    @unittest.expectedFailure
     def test_entrees_mal_formees_refusees_proprement(self):
-        self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms='vite').status_code, 400)
-        r = self.alice.post(f'/api/quiz/{self.sid}/repondre/', {'question': 'abc', 'reponses_choisies': []}, format='json')
-        self.assertIn(r.status_code, (400, 404))
-        self.assertEqual(self.alice.post('/api/quiz/demarrer/', {'themes': 5}, format='json').status_code, 400)
+        """Corrigé le 2026-10-11 : ces entrées donnaient une erreur 500."""
+        for temps in ('vite', -5, 1.5, True, 2 ** 31, [1], {'ms': 1}):
+            with self.subTest(temps_ms=temps):
+                self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms=temps).status_code, 400)
+        # Refusée, la réponse n'est pas enregistrée.
+        self.assertFalse(QuizReponse.objects.filter(correcte=True).exists())
+        for question in ('abc', '', None, -1, 1.5, True, [self.unique.id], {'id': self.unique.id}):
+            with self.subTest(question=question):
+                r = self.alice.post(f'/api/quiz/{self.sid}/repondre/',
+                                    {'question': question, 'reponses_choisies': []}, format='json')
+                self.assertEqual(r.status_code, 400)
+        for themes in (5, 'tous', {'id': 1}, True):
+            with self.subTest(themes=themes):
+                self.assertEqual(self.alice.post('/api/quiz/demarrer/', {'themes': themes}, format='json').status_code, 400)
+        self.assertEqual(QuizSession.objects.count(), 1)
+
+    def test_entrees_tolerees(self):
+        # Ce que le frontend envoie réellement continue de passer.
+        self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms=None).status_code, 200)
+        self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms=0).status_code, 200)
+        self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms='1500').status_code, 200)
+        self.assertEqual(QuizReponse.objects.get(session_id=self.sid, question=self.unique).temps_ms, 1500)
+        r = self.alice.post(f'/api/quiz/{self.sid}/repondre/',
+                            {'question': str(self.multiple.id), 'reponses_choisies': self.m_ok}, format='json')
+        self.assertEqual((r.status_code, r.json()['correcte']), (200, True))
+        for themes in (None, [], ['abc']):
+            self.assertEqual(self.alice.post('/api/quiz/demarrer/', {'themes': themes}, format='json').status_code, 201)
 
 
 class BanqueDeQuestionsTests(CasRoute):
