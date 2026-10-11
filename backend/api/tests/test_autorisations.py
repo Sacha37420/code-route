@@ -182,18 +182,24 @@ class SessionsDeQuizTests(CasRoute):
             self.assertTrue(any(x['correcte'] for x in ligne['question']['reponses']))
             self.assertIn('explication_generale', ligne['question'])
 
-    # DÉFAUT DE PRODUCTION (contrat I4, non corrigé) : l'image d'une question n'est
-    # servie que par `/api/questions/<id>/illustration/`, action de QuestionViewSet
-    # (IsAdmin). Or c'est cette URL que le frontend appelle pendant un quiz et dans
-    # l'historique (`ApiService.questionIllustrationUrl`) : un usager non admin
-    # reçoit 403 et ne voit jamais l'illustration d'une question qu'on lui pose.
-    @unittest.expectedFailure
-    def test_un_usager_voit_l_illustration_d_une_question_de_son_quiz(self):
+    def test_un_usager_voit_l_illustration_d_une_question_sans_acceder_a_la_banque(self):
+        """Corrigé le 2026-10-11 : l'image n'était servie qu'aux administrateurs (403 en plein quiz)."""
         Question.objects.filter(pk=self.q1.id).update(illustration_path='questions/abc-panneau.png')
         self.http_get.side_effect = None
         self.http_get.return_value = mock.Mock(status_code=200, iter_content=lambda chunk_size: [b'PNG'])
-        r = self.alice.get(f'/api/questions/{self.q1.id}/illustration/')
-        self.assertEqual(r.status_code, 200)
+        url = f'/api/questions/{self.q1.id}/illustration/'
+        r = self.alice.get(url)
+        self.assertEqual((r.status_code, r['Content-Type']), (200, 'image/png'))
+        self.assertEqual(b''.join(r.streaming_content), b'PNG')
+        self.assertEqual(self.http_get.call_args.kwargs['headers'], {'Authorization': f'Bearer {self.alice.jeton}'})
+        self.assertEqual(self.alice.get(f'/api/questions/{self.q2.id}/illustration/').status_code, 404)
+        # Lecture seule, et de l'image seule : le reste de la banque reste fermé.
+        for methode in ('post', 'put', 'patch', 'delete'):
+            self.assertIn(getattr(self.alice, methode)(url, {}, format='json').status_code, (403, 405), methode)
+        self.assertEqual(self.alice.get(f'/api/questions/{self.q1.id}/').status_code, 403)
+        self.assertEqual(self.alice.get('/api/questions/').status_code, 403)
+        self.assertEqual(self.alice.post(f'/api/questions/{self.q1.id}/valider/').status_code, 403)
+        self.assertEqual(Question.objects.get(pk=self.q1.id).illustration_path, 'questions/abc-panneau.png')
 
 
 class CleMistralTests(CasRoute):

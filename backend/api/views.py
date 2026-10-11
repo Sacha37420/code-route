@@ -139,6 +139,14 @@ class QuestionViewSet(viewsets.ModelViewSet):
     serializer_class = QuestionAdminSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    def get_permissions(self):
+        # L'image d'une question est affichée à l'usager pendant son quiz et dans
+        # son historique : lecture ouverte à tout usager autorisé de l'app. Tout
+        # le reste de la banque (bonnes réponses comprises) reste aux admins.
+        if self.action == 'illustration':
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     def get_queryset(self):
         qs = super().get_queryset()
         theme_id = self.request.query_params.get('theme')
