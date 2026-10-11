@@ -129,11 +129,25 @@ class QuestionReviewSerializer(serializers.ModelSerializer):
 
 
 class QuizReponseDetailSerializer(serializers.ModelSerializer):
-    question = QuestionReviewSerializer(read_only=True)
+    question = serializers.SerializerMethodField()
 
     class Meta:
         model = QuizReponse
         fields = ['id', 'question', 'reponses_choisies', 'correcte', 'temps_ms']
+
+    def get_question(self, obj):
+        # La correction n'est rendue qu'une fois la session terminée ou la
+        # question répondue : sinon ce détail livrait toutes les bonnes réponses
+        # d'un quiz en cours. Pas de champ « répondue » en base : une ligne
+        # pré-créée au démarrage n'a ni choix ni temps (une réponse vide envoyée
+        # sans temps reste donc masquée jusqu'à la fin de la session).
+        revelee = (
+            obj.session.date_fin is not None
+            or bool(obj.reponses_choisies)
+            or obj.temps_ms is not None
+        )
+        serializer = QuestionReviewSerializer if revelee else QuestionQuizSerializer
+        return serializer(obj.question).data
 
 
 class QuizSessionSerializer(serializers.ModelSerializer):

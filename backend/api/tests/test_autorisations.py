@@ -158,20 +158,29 @@ class SessionsDeQuizTests(CasRoute):
     def test_session_inconnue(self):
         self.assertEqual(self.alice.get('/api/quiz/999999/').status_code, 404)
 
-    # DÉFAUT DE PRODUCTION (contrat I4, non corrigé) : `GET /api/quiz/<id>/` sert
-    # QuizSessionDetailSerializer (donc QuestionReviewSerializer, avec `correcte` et
-    # les explications) même tant que la session est ouverte. Un usager démarre un
-    # quiz, lit ici toutes les bonnes réponses, puis répond : la règle « ne jamais
-    # exposer la bonne réponse avant correction » (ReponseQuizSerializer) est
-    # contournée. À retirer quand la vue ne détaille que les questions répondues
-    # ou les sessions terminées.
-    @unittest.expectedFailure
     def test_le_detail_d_une_session_ouverte_ne_livre_pas_les_bonnes_reponses(self):
+        """Corrigé le 2026-10-11 : ce détail rendait toutes les corrections d'un quiz en cours."""
         r = self.alice.get(f'/api/quiz/{self.sid}/')
         self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()['reponses_donnees']), 2)
         for ligne in r.json()['reponses_donnees']:
+            self.assertNotIn('explication_generale', ligne['question'])
             for rep in ligne['question']['reponses']:
-                self.assertNotIn('correcte', rep)
+                self.assertEqual(set(rep), {'id', 'texte'})
+
+    def test_le_detail_revele_la_correction_des_seules_questions_repondues(self):
+        self.alice.post(f'/api/quiz/{self.sid}/repondre/',
+                        {'question': self.q1.id, 'reponses_choisies': self.ko1[:1], 'temps_ms': 900}, format='json')
+        lignes = {l['question']['id']: l for l in self.alice.get(f'/api/quiz/{self.sid}/').json()['reponses_donnees']}
+        self.assertEqual({x['id'] for x in lignes[self.q1.id]['question']['reponses'] if x['correcte']}, set(self.ok1))
+        self.assertEqual(lignes[self.q1.id]['reponses_choisies'], self.ko1[:1])
+        for rep in lignes[self.q2.id]['question']['reponses']:
+            self.assertNotIn('correcte', rep)
+        # Session terminée : tout est corrigé, y compris la question restée sans réponse.
+        self.alice.post(f'/api/quiz/{self.sid}/terminer/')
+        for ligne in self.alice.get(f'/api/quiz/{self.sid}/').json()['reponses_donnees']:
+            self.assertTrue(any(x['correcte'] for x in ligne['question']['reponses']))
+            self.assertIn('explication_generale', ligne['question'])
 
     # DÉFAUT DE PRODUCTION (contrat I4, non corrigé) : l'image d'une question n'est
     # servie que par `/api/questions/<id>/illustration/`, action de QuestionViewSet
