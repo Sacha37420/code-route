@@ -4,6 +4,8 @@
       <p>{{ erreur() }}</p>
       <a routerLink="/quiz" class="btn-primary">Redémarrer un quiz</a>
     </div>
+  } @else if (phase() === 'chargement') {
+    <p class="hint">Chargement…</p>
   } @else if (phase() === 'termine') {
     <div class="card resultat-card">
       <h1>Quiz terminé</h1>
@@ -46,9 +48,12 @@
       </div>
 
       @if (phase() === 'repondre') {
-        <button class="btn-primary" type="button" [disabled]="selection.size === 0" (click)="valider()">
+        <button class="btn-primary" type="button" [disabled]="selection.size === 0 || envoi()" (click)="valider()">
           Valider
         </button>
+        @if (erreurEnvoi()) {
+          <p class="erreur-envoi" role="alert">{{ erreurEnvoi() }}</p>
+        }
       }
 
       @if (phase() === 'correction' && derniereCorrection(); as res) {
