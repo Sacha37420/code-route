@@ -128,6 +128,15 @@ class QuestionReviewSerializer(serializers.ModelSerializer):
         ]
 
 
+def deja_repondue(quiz_reponse) -> bool:
+    """La question a-t-elle déjà reçu une réponse dans cette session ?
+
+    Pas de champ dédié en base : la ligne pré-créée au démarrage du quiz n'a ni
+    choix ni temps, et QuizRepondreView enregistre toujours un temps (0 si le
+    client n'en envoie pas) — une réponse vide est donc reconnue elle aussi."""
+    return bool(quiz_reponse.reponses_choisies) or quiz_reponse.temps_ms is not None
+
+
 class QuizReponseDetailSerializer(serializers.ModelSerializer):
     question = serializers.SerializerMethodField()
 
@@ -138,14 +147,8 @@ class QuizReponseDetailSerializer(serializers.ModelSerializer):
     def get_question(self, obj):
         # La correction n'est rendue qu'une fois la session terminée ou la
         # question répondue : sinon ce détail livrait toutes les bonnes réponses
-        # d'un quiz en cours. Pas de champ « répondue » en base : une ligne
-        # pré-créée au démarrage n'a ni choix ni temps (une réponse vide envoyée
-        # sans temps reste donc masquée jusqu'à la fin de la session).
-        revelee = (
-            obj.session.date_fin is not None
-            or bool(obj.reponses_choisies)
-            or obj.temps_ms is not None
-        )
+        # d'un quiz en cours (cf. deja_repondue).
+        revelee = obj.session.date_fin is not None or deja_repondue(obj)
         serializer = QuestionReviewSerializer if revelee else QuestionQuizSerializer
         return serializer(obj.question).data
 

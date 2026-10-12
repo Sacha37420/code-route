@@ -103,6 +103,9 @@ class RepondreEtTerminerTests(CasRoute):
         ]
         for question, choix, attendu in cas:
             with self.subTest(question=question.enonce, choix=choix):
+                # Une question ne reçoit qu'une réponse par session : session neuve par cas.
+                self.sid = self.alice.post('/api/quiz/demarrer/', {'nombre_questions': 50},
+                                           format='json').json()['session']['id']
                 r = self._repondre(question, choix)
                 self.assertEqual(r.status_code, 200)
                 self.assertIs(r.json()['correcte'], attendu)
@@ -168,14 +171,40 @@ class RepondreEtTerminerTests(CasRoute):
     def test_entrees_tolerees(self):
         # Ce que le frontend envoie réellement continue de passer.
         self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms=None).status_code, 200)
-        self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms=0).status_code, 200)
-        self.assertEqual(self._repondre(self.unique, self.u_ok, temps_ms='1500').status_code, 200)
-        self.assertEqual(QuizReponse.objects.get(session_id=self.sid, question=self.unique).temps_ms, 1500)
+        self.assertEqual(QuizReponse.objects.get(session_id=self.sid, question=self.unique).temps_ms, 0)
+        self.assertEqual(self._repondre(self.vf, self.v_ok, temps_ms='1500').status_code, 200)
+        self.assertEqual(QuizReponse.objects.get(session_id=self.sid, question=self.vf).temps_ms, 1500)
         r = self.alice.post(f'/api/quiz/{self.sid}/repondre/',
                             {'question': str(self.multiple.id), 'reponses_choisies': self.m_ok}, format='json')
         self.assertEqual((r.status_code, r.json()['correcte']), (200, True))
         for themes in (None, [], ['abc']):
             self.assertEqual(self.alice.post('/api/quiz/demarrer/', {'themes': themes}, format='json').status_code, 201)
+
+    def test_seconde_reponse_refusee_la_premiere_compte(self):
+        premiere = self._repondre(self.unique, self.u_ko[:1], temps_ms=800)
+        self.assertEqual(premiere.status_code, 200)
+        # La correction vient d'être rendue : s'en servir pour re-répondre est refusé.
+        bonnes = [x['id'] for x in premiere.json()['question']['reponses'] if x['correcte']]
+        seconde = self._repondre(self.unique, bonnes, temps_ms=900)
+        self.assertEqual(seconde.status_code, 409)
+        self.assertNotIn('correcte', seconde.json())
+        qr = QuizReponse.objects.get(session_id=self.sid, question=self.unique)
+        self.assertEqual((qr.correcte, qr.reponses_choisies, qr.temps_ms), (False, self.u_ko[:1], 800))
+        # Renvoi à l'identique (double clic) : refusé aussi, sans rien changer.
+        self.assertEqual(self._repondre(self.unique, self.u_ko[:1], temps_ms=800).status_code, 409)
+        # Les autres questions restent ouvertes, et le score ne compte que les premières réponses.
+        self.assertEqual(self._repondre(self.multiple, self.m_ok).status_code, 200)
+        self.assertEqual(self.alice.post(f'/api/quiz/{self.sid}/terminer/').json()['score'], 1)
+
+    def test_une_reponse_vide_sans_temps_compte_aussi_comme_reponse(self):
+        # Sinon : répondre « rien » pour lire la correction, puis répondre juste.
+        r = self._repondre(self.unique, [])
+        self.assertEqual((r.status_code, r.json()['correcte']), (200, False))
+        self.assertEqual(self._repondre(self.unique, self.u_ok).status_code, 409)
+        self.assertFalse(QuizReponse.objects.get(session_id=self.sid, question=self.unique).correcte)
+        # Répondue, sa correction apparaît dans le détail de la session ouverte.
+        lignes = {l['question']['id']: l for l in self.alice.get(f'/api/quiz/{self.sid}/').json()['reponses_donnees']}
+        self.assertTrue(any(x.get('correcte') for x in lignes[self.unique.id]['question']['reponses']))
 
 
 class BanqueDeQuestionsTests(CasRoute):

@@ -27,7 +27,7 @@ from .serializers import (
     QuestionAdminSerializer, QuestionQuizSerializer, QuestionReviewSerializer,
     QuizSessionSerializer, QuizSessionDetailSerializer,
     ConfigurationMistralSerializer, AnalyseIASerializer,
-    GenerationIASerializer, GenerationIADetailSerializer,
+    GenerationIASerializer, GenerationIADetailSerializer, deja_repondue,
 )
 
 # Chemin storage du manifeste écrit par seed_illustrations_wikimedia (voir ce
@@ -285,6 +285,15 @@ class QuizRepondreView(APIView):
                 return Response({'detail': 'temps_ms invalide.'}, status=status.HTTP_400_BAD_REQUEST)
             temps_ms = int(temps_ms)
 
+        # Une seule réponse par question : la première compte. La correction est
+        # rendue avec elle — accepter une seconde réponse permettait de répondre,
+        # lire la correction, puis re-répondre juste.
+        if deja_repondue(quiz_reponse):
+            return Response(
+                {'detail': 'Cette question a déjà reçu une réponse dans cette session.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         correct_ids = set(
             Reponse.objects.filter(question_id=question_id, correcte=True).values_list('id', flat=True)
         )
@@ -293,7 +302,8 @@ class QuizRepondreView(APIView):
 
         quiz_reponse.reponses_choisies = sorted(choisies_ids)
         quiz_reponse.correcte = correcte
-        quiz_reponse.temps_ms = temps_ms
+        # Jamais None une fois répondue : c'est ce qui marque la réponse (deja_repondue).
+        quiz_reponse.temps_ms = temps_ms if temps_ms is not None else 0
         quiz_reponse.save()
 
         question = Question.objects.prefetch_related('reponses').get(pk=question_id)
