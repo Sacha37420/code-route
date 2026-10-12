@@ -63,6 +63,14 @@ class QuestionAdminSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['origine', 'generation', 'cree_le']
 
+    def validate_reponses(self, value):
+        # Sans bonne réponse, une question est inexploitable dans un quiz : rien
+        # de ce qu'on coche n'est juste (même règle que pour les questions
+        # générées, cf. tasks.generer_questions).
+        if not any(r.get('correcte') for r in value):
+            raise serializers.ValidationError('Au moins une réponse doit être marquée correcte.')
+        return value
+
     def create(self, validated_data):
         reponses_data = validated_data.pop('reponses')
         question = Question.objects.create(**validated_data)

@@ -274,6 +274,41 @@ class BanqueDeQuestionsTests(CasRoute):
         self.assertEqual([q['enonce'] for q in self.admin.get('/api/questions/?statut=proposee').json()], ['B'])
         self.assertEqual({q['enonce'] for q in self.admin.get(f'/api/questions/?theme={self.theme.id}').json()}, {'A', 'B'})
 
+    def test_question_sans_bonne_reponse_refusee_a_l_enregistrement(self):
+        for reponses in ([], [{'texte': 'a', 'correcte': False}, {'texte': 'b', 'correcte': False}],
+                         [{'texte': 'a'}, {'texte': 'b'}]):
+            with self.subTest(reponses=reponses):
+                r = self.admin.post('/api/questions/', self._corps(reponses=reponses), format='json')
+                self.assertEqual(r.status_code, 400)
+                self.assertIn('reponses', r.json())
+        self.assertEqual(Question.objects.count(), 0)
+
+    def test_modification_qui_retire_toute_bonne_reponse_refusee(self):
+        self.admin.post('/api/questions/', self._corps(), format='json')
+        q = Question.objects.get()
+        avant = sorted(q.reponses.values_list('texte', 'correcte'))
+        for methode in ('patch', 'put'):
+            corps = self._corps(reponses=[{'texte': 'x', 'correcte': False}])
+            r = getattr(self.admin, methode)(f'/api/questions/{q.id}/', corps, format='json')
+            self.assertEqual(r.status_code, 400, methode)
+        self.assertEqual(sorted(q.reponses.values_list('texte', 'correcte')), avant)
+
+    def test_notation_d_une_question_deja_en_base_sans_bonne_reponse(self):
+        """Lecture seule — ce que fait la notation si une telle question existe déjà
+        (saisie avant le contrôle, ou ligne insérée directement) : aucune réponse
+        cochée n'est jamais juste ; seul un envoi vide l'est, ce que l'interface
+        ne permet pas (bouton « Valider » inactif sans sélection)."""
+        ancienne, _, fausses = creer_question(self.theme, 'Sans bonne réponse', bonnes=())
+        for choix, attendu in ((fausses[:1], False), (fausses, False), ([], True)):
+            with self.subTest(choix=choix):
+                sid = self.alice.post('/api/quiz/demarrer/', {'nombre_questions': 50}, format='json').json()['session']['id']
+                r = self.alice.post(f'/api/quiz/{sid}/repondre/', {'question': ancienne.id, 'reponses_choisies': choix},
+                                    format='json')
+                self.assertEqual((r.status_code, r.json()['correcte']), (200, attendu))
+        # La lecture ne l'a pas modifiée, et un admin peut toujours la valider ou la rejeter.
+        self.assertFalse(ancienne.reponses.filter(correcte=True).exists())
+        self.assertEqual(self.admin.post(f'/api/questions/{ancienne.id}/rejeter/').status_code, 200)
+
 
 class IllustrationsTests(CasRoute):
     """Fichiers dans `storage`, au nom de l'utilisateur (jeton transmis tel quel)."""
