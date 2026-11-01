@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   sso-net:
     external: true
@@ -33,7 +31,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8096:8000"
+      - "${LAB_BIND_ADDR:-127.0.0.1}:8096:8000"
     networks:
       - sso-net
       - dev-net
@@ -71,7 +69,7 @@ services:
       PORT_BACKEND: ${PORT_BACKEND:-}
       PORT_FRONTEND: ${PORT_FRONTEND:-}
     ports:
-      - "4200:80"
+      - "${LAB_BIND_ADDR:-127.0.0.1}:4200:80"
     networks:
       - sso-net
     labels:

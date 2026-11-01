@@ -37,12 +37,15 @@ génération de questions par Mistral (worker Celery et Redis).
 - [ ] Test `MonBilan` sur une session ouverte, conforme à la règle retenue
 **Vérifié le :**
 
-## Lot 4 — Gabarit front, documentation et chemin à portes   ·   statut : à faire
+## Lot 4 — Gabarit front, documentation et chemin à portes   ·   statut : en cours
 **Objectif :** même comportement que le gabarit corrigé (T3), un README, un déploiement par le moteur (T1).
 **Tâches :**
-- [ ] Polices en chemin relatif (`styles.scss:3-11`) ; `tokenBases()` ; PKCE. Le `redirectUri` est déjà sur la page courante.
-- [ ] Retirer `version: "3.9"`, obsolète, du compose
+- [x] Polices en chemin relatif (`styles.scss:3-11`) ; `tokenBases()` ; PKCE ; `redirectUri` par `loginRedirectUri` (origine et préfixe de l'app) — chantier failles, I2
+- [x] Retirer `version: "3.9"`, obsolète, du compose
+- [x] Ports liés à `${LAB_BIND_ADDR:-127.0.0.1}` (chantier failles, I1)
+- [x] Coffre : `EncryptedTextField` chiffre sous `VAULT_ENCRYPTION_KEY`, relit l'ancienne clé dérivée de `SECRET_KEY` (`MultiFernet`) ; migration `0009_rechiffrer_coffre` ; valeur indéchiffrable = absente (chantier failles, F7/I3)
 - [ ] `README.md` : contenu, génération IA (clé, coût), tests
 **Tests à passer avant de clore le lot :**
 - [ ] WOFF2 en 200 derrière `/code-route/` ; `validate-app.sh code-route --quality-only` vert ; cloisonnement `ok` par le moteur
-**Vérifié le :**
+- [x] `api/tests/test_coffre.py` : ancienne clé relue puis rechiffrée, valeur en clair chiffrée, valeur corrompue absente et journalisée sans sa valeur, migration qui la laisse intacte
+**Vérifié le :** 2026-11-01 — non déployé. `bash chantiers/tests/essai.sh code-route` : 93 tests OK (86 + 7 du coffre) ; image candidate `code-route-frontend:candidat` construite (polices en `./media/…`, `S256` dans le bundle) ; `docker compose config` : `host_ip: 127.0.0.1` sur les deux ports. Restent : README, WOFF2 en service, chemin à portes.

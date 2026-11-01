@@ -7,18 +7,14 @@ import {
   ConfigurationMistral, AnalyseIA, GenerationIA, GenerationIADetail, Difficulte,
   AssistantReponse,
 } from './models';
-
-interface EnvWindow {
-  __env?: { apiUrl?: string };
-}
+import { apiUrl } from './env';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private http = inject(HttpClient);
 
   get base(): string {
-    return (window as unknown as EnvWindow).__env?.apiUrl
-      ?? 'http://localhost:8096';
+    return apiUrl();
   }
 
   getMe(): Observable<Me> {

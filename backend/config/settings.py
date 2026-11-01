@@ -7,6 +7,10 @@ from decouple import config
 # ── Sécurité ──────────────────────────────────────────────────────────────────
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-code_route-change-in-production')
 DEBUG = config('DEBUG', default=False, cast=bool)
+# Clé Fernet du coffre (api/fields.py) — distincte de SECRET_KEY, SANS valeur par
+# défaut : faire tourner SECRET_KEY ne doit plus jamais toucher aux secrets
+# stockés. Posée dans .env par l'administrateur du lab.
+VAULT_ENCRYPTION_KEY = config('VAULT_ENCRYPTION_KEY')
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
 # ── Reverse proxy (Caddy) ──────────────────────────────────────────────────────
