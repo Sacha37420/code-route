@@ -46,9 +46,10 @@ génération de questions par Mistral (worker Celery et Redis).
 - [x] Coffre : `EncryptedTextField` chiffre sous `VAULT_ENCRYPTION_KEY`, relit l'ancienne clé dérivée de `SECRET_KEY` (`MultiFernet`) ; migration `0009_rechiffrer_coffre` ; valeur indéchiffrable = absente (chantier failles, F7/I3)
 - [ ] `README.md` : contenu, génération IA (clé, coût), tests
 **Tests à passer avant de clore le lot :**
-- [ ] WOFF2 en 200 derrière `/code-route/` ; `validate-app.sh code-route --quality-only` vert ; cloisonnement `ok` par le moteur — *2026-11-01 : WOFF2 vérifiés ; reste `validate-app.sh --quality-only` et le cloisonnement joué par le moteur*
+- [x] WOFF2 en 200 derrière `/code-route/` ; `validate-app.sh code-route --quality-only` vert ; cloisonnement `ok` par le moteur — *2026-11-01 : WOFF2 vérifiés ; 2026-11-01 : cloisonnement `ok`, origine `moteur` (`<LAB_STATE_DIR>/tests/code-route.json`) ; 2026-11-08 : `--quality-only` code 0 (copie de ce dossier, outil `valq.sh` du chantier de nuit)*
 - [x] `api/tests/test_coffre.py` : ancienne clé relue puis rechiffrée, valeur en clair chiffrée, valeur corrompue absente et journalisée sans sa valeur, migration qui la laisse intacte
 **Vérifié le :** 2026-11-01 — non déployé. `bash chantiers/tests/essai.sh code-route` : 93 tests OK (86 + 7 du coffre) ; image candidate `code-route-frontend:candidat` construite (polices en `./media/…`, `S256` dans le bundle) ; `docker compose config` : `host_ip: 127.0.0.1` sur les deux ports. Restent : README, WOFF2 en service, chemin à portes.
+**Relecture du 2026-11-08 (nuit) :** « en cours » juste ; il ne reste que le `README.md` (absent du dépôt).
 
 ## Mise en service — chantier « failles » (2026-11-01)
 Les mentions « non déployé » ci-dessus datent d'avant cette mise en service. Image construite pendant
