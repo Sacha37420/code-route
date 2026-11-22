@@ -75,6 +75,17 @@ def _delete_owned_illustration(request, path: str) -> None:
         storage_client.delete(_auth_header(request), path)
 
 
+def _servir_illustration(request, path: str):
+    """Relaie l'illustration depuis storage. Storage en panne ou fichier absent :
+    un 502 au message fixe, pas une erreur 500 (le détail de l'erreur reste ici)."""
+    try:
+        tmp = storage_client.download_to_tempfile(_auth_header(request), path)
+    except storage_client.StorageClientError:
+        return Response({'detail': 'Illustration indisponible.'}, status=status.HTTP_502_BAD_GATEWAY)
+    content_type = mimetypes.guess_type(path)[0] or 'application/octet-stream'
+    return FileResponse(tmp, content_type=content_type)
+
+
 class FicheCoursViewSet(viewsets.ModelViewSet):
     queryset = FicheCours.objects.select_related('theme').all()
     serializer_class = FicheCoursSerializer
@@ -118,9 +129,7 @@ class FicheCoursViewSet(viewsets.ModelViewSet):
         fiche = self.get_object()
         if not fiche.illustration_path:
             return Response(status=404)
-        tmp = storage_client.download_to_tempfile(_auth_header(request), fiche.illustration_path)
-        content_type = mimetypes.guess_type(fiche.illustration_path)[0] or 'application/octet-stream'
-        return FileResponse(tmp, content_type=content_type)
+        return _servir_illustration(request, fiche.illustration_path)
 
 
 class SiteExterneViewSet(viewsets.ModelViewSet):
@@ -183,9 +192,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
         question = self.get_object()
         if not question.illustration_path:
             return Response(status=404)
-        tmp = storage_client.download_to_tempfile(_auth_header(request), question.illustration_path)
-        content_type = mimetypes.guess_type(question.illustration_path)[0] or 'application/octet-stream'
-        return FileResponse(tmp, content_type=content_type)
+        return _servir_illustration(request, question.illustration_path)
 
     @action(detail=True, methods=['post'])
     def valider(self, request, pk=None):

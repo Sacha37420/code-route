@@ -1,7 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { marked } from 'marked';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ApiService } from '../../core/api.service';
 import { AssistantMessage, Theme } from '../../core/models';
 
@@ -14,7 +13,6 @@ import { AssistantMessage, Theme } from '../../core/models';
 })
 export class AssistantFichesComponent implements OnInit {
   private api = inject(ApiService);
-  private sanitizer = inject(DomSanitizer);
 
   themes = signal<Theme[]>([]);
   themeId: number | null = null;
@@ -41,12 +39,13 @@ export class AssistantFichesComponent implements OnInit {
     return this.messages().length > 0;
   }
 
-  rendreMarkdown(texte: string): SafeHtml {
+  rendreMarkdown(texte: string): string {
     // Le bloc ```json de la proposition est retiré de l'affichage : il est
     // montré séparément dans la carte de proposition (voir template).
     const sansJson = texte.replace(/```json[\s\S]*?```/, '').trim();
-    const html = marked.parse(sansJson || texte, { async: false }) as string;
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    // Texte produit par Mistral (recherche web comprise) : assaini par Angular
+    // à la liaison `[innerHTML]`, jamais marqué « sûr ».
+    return marked.parse(sansJson || texte, { async: false }) as string;
   }
 
   envoyer(): void {
