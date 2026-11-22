@@ -6,6 +6,20 @@ from .models import (
 )
 
 
+def valider_chemin_illustration(value: str) -> str:
+    """`illustration_path` est écrivable directement (banque Wikimedia) et part
+    tel quel dans l'URL de storage (`…/content/<chemin>`) : un chemin relatif
+    simple seulement — ni `/` en tête, ni segment vide, `.` ou `..`, ni `\\`,
+    `?`, `#`, `%` ou caractère de contrôle, qui viseraient une autre route ou un
+    autre espace de storage."""
+    if not value:
+        return value
+    if (value.startswith('/') or any(s in ('', '.', '..') for s in value.split('/'))
+            or any(c in value for c in '\\?#%') or any(ord(c) < 32 or ord(c) == 127 for c in value)):
+        raise serializers.ValidationError("Chemin d'illustration invalide.")
+    return value
+
+
 class ThemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Theme
@@ -26,6 +40,12 @@ class FicheCoursSerializer(serializers.ModelSerializer):
         # reste écrivable directement pour réutiliser une image déjà en storage —
         # cf. le sélecteur alimenté par GET /api/illustrations-disponibles/
         # (banque Wikimedia amorcée par seed_illustrations_wikimedia).
+
+    def validate_illustration_path(self, value):
+        # Valeur inchangée (le formulaire la renvoie) : pas recontrôlée.
+        if value == getattr(self.instance, 'illustration_path', None):
+            return value
+        return valider_chemin_illustration(value)
 
 
 class SiteExterneSerializer(serializers.ModelSerializer):
@@ -62,6 +82,12 @@ class QuestionAdminSerializer(serializers.ModelSerializer):
             'reponses',
         ]
         read_only_fields = ['origine', 'generation', 'cree_le']
+
+    def validate_illustration_path(self, value):
+        # Valeur inchangée (le formulaire la renvoie) : pas recontrôlée.
+        if value == getattr(self.instance, 'illustration_path', None):
+            return value
+        return valider_chemin_illustration(value)
 
     def validate_reponses(self, value):
         # Sans bonne réponse, une question est inexploitable dans un quiz : rien

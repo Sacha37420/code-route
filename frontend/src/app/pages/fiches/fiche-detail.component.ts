@@ -1,7 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 import { ApiService } from '../../core/api.service';
 import { ProtectedImageComponent } from '../../core/protected-image.component';
@@ -18,10 +17,9 @@ export class FicheDetailComponent implements OnInit {
   private api = inject(ApiService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private sanitizer = inject(DomSanitizer);
 
   fiche = signal<FicheCours | undefined>(undefined);
-  contenuHtml = signal<SafeHtml>('');
+  contenuHtml = signal('');
   loading = signal(true);
   isAdmin = signal(false);
   editing = signal(false);
@@ -50,8 +48,10 @@ export class FicheDetailComponent implements OnInit {
   }
 
   private renderMarkdown(md: string): void {
-    const html = marked.parse(md || '', { async: false }) as string;
-    this.contenuHtml.set(this.sanitizer.bypassSecurityTrustHtml(html));
+    // `marked` laisse passer le HTML brut du Markdown : c'est l'assainisseur
+    // d'Angular (liaison `[innerHTML]` d'une chaîne) qui retire scripts,
+    // attributs `on…` et liens `javascript:`. Ne jamais le court-circuiter.
+    this.contenuHtml.set(marked.parse(md || '', { async: false }) as string);
   }
 
   illustrationUrl(): string {

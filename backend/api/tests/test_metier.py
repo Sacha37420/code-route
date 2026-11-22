@@ -399,6 +399,36 @@ class IllustrationsTests(CasRoute):
         # C'est le jeton de la lectrice qui part vers storage, pas celui d'un admin.
         self.assertEqual(appel.kwargs['headers'], {'Authorization': f'Bearer {self.alice.jeton}'})
 
+    def test_storage_en_panne_donne_502_et_non_500(self):
+        avec = FicheCours.objects.create(theme=self.theme, titre='Avec', contenu='x',
+                                         illustration_path='fiches/abc-panneau.png')
+        q, _, _ = creer_question(self.theme, illustration_path='questions/abc-x.png')
+        self.http_get.side_effect = None
+        self.http_get.return_value = mock.Mock(status_code=500)
+        for url in (f'/api/fiches/{avec.id}/illustration/', f'/api/questions/{q.id}/illustration/'):
+            r = self.alice.get(url)
+            self.assertEqual(r.status_code, 502, url)
+            self.assertEqual(r.json(), {'detail': 'Illustration indisponible.'})
+        self.http_get.side_effect = requests.ConnectionError('injoignable')
+        self.assertEqual(self.alice.get(f'/api/fiches/{avec.id}/illustration/').status_code, 502)
+
+    def test_un_chemin_d_illustration_hors_du_partage_est_refuse(self):
+        for chemin in ('../autre-app/x.png', 'wikimedia/../../x.png', '/x.png', 'wikimedia//x.png',
+                       'wikimedia/x.png?y=1', 'wikimedia/x.png#y', 'wikimedia/%2e%2e/x.png', 'wikimedia\\x.png'):
+            r = self.admin.post('/api/fiches/', {'theme': self.theme.id, 'titre': 'F', 'contenu': 't',
+                                                  'illustration_path': chemin}, format='multipart')
+            self.assertEqual(r.status_code, 400, chemin)
+            self.assertIn('illustration_path', r.json(), chemin)
+        self.assertFalse(FicheCours.objects.exists())
+        q, _, _ = creer_question(self.theme, illustration_path='questions/abc-x.png')
+        r = self.admin.patch(f'/api/questions/{q.id}/', {'illustration_path': '../x.png'}, format='json')
+        self.assertEqual(r.status_code, 400)
+        q.refresh_from_db()
+        self.assertEqual(q.illustration_path, 'questions/abc-x.png')
+        self.assertEqual(self.depots, [])
+        # Un chemin de la banque partagée reste accepté.
+        self._creer_fiche(illustration_path='wikimedia/France_road_sign_AB4.svg')
+
     def test_banque_d_images_disponibles(self):
         manifeste = [{'relative_path': 'wikimedia/stop.png', 'nom': 'Stop', 'credit': 'CC'}]
         self.http_get.side_effect = None
